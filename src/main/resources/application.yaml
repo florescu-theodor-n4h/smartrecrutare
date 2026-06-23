@@ -1,3 +1,15 @@
 spring:
   application:
     name: smartrecrutare
+  datasource:
+    url: jdbc:postgresql://192.168.2.1:5432/smartrecrutare
+    username: postgres
+    password: admin
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        default_schema: recrutare
+    show-sql: true
