@@ -27,6 +27,6 @@ public class Candidat {
     /// Adresa Mail.
     private String mail;
     /// Adresa telefon.
-  @Schema(description = "Număr de telefon", example = "+40722111222")
+    @Schema(description = "Număr de telefon", example = "+40722111222")
     private String tel;
 }
