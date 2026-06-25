@@ -1,15 +1,14 @@
 package com.samplus.smartrecrutare;
 
-import com.samplus.smartrecrutare.Candidat;
-import com.samplus.smartrecrutare.DepozitCandidati;
-import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.*;
+import io.swagger.v3.oas.annotations.media.*;
+import io.swagger.v3.oas.annotations.responses.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
 
-import javax.naming.ldap.Control;
 import java.util.Collection;
-import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/candidati")
@@ -24,6 +23,12 @@ public class ControllerCandidat {
         this.depCandidati = depozitCandidati;
     }
 
+    @Operation(summary = "Creează un candidat nou",
+            description = "Adaugă un candidat nou în baza de date")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Candidat creat cu succes",
+                    content = @Content(schema = @Schema(implementation = Candidat.class)))
+    })
     @PostMapping
     public Candidat creare(@RequestBody Candidat candidat) {
         return depCandidati.save(candidat);
@@ -31,15 +36,26 @@ public class ControllerCandidat {
 
     @DeleteMapping("/{numeCandidate}")
     public Boolean stergere(@PathVariable String numeCandidate) {
-        return true;
+        log.info("S-a sters un candidat: {}", numeCandidate);
+        final Optional<Candidat> candidatOpt = depCandidati.findByNumePrenume(numeCandidate);
+        if (candidatOpt.isPresent()) {
+            depCandidati.delete(candidatOpt.get());
+            return true;
+        }
+
+        return false;
     }
 
     @PutMapping("/{id}")
     public Candidat update(@PathVariable Long id, @RequestBody Candidat candidat) {
         return depCandidati.findById(id)
                 .map(existing -> {
-                    candidat.setId(id);
-                    return depCandidati.save(candidat);
+                    existing.setNumePrenume(candidat.getNumePrenume());
+                    existing.setMail(candidat.getMail());
+                    existing.setTel(candidat.getTel());
+                    // add other fields here
+
+                    return depCandidati.save(existing);
                 })
                 .orElseThrow(() -> new RuntimeException("Candidat inexistent"));
     }

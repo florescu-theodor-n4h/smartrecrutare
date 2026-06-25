@@ -6,7 +6,8 @@
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>4.1.0</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<!-- lookup parent from repository -->
+		<relativePath/>
 	</parent>
 	<groupId>com.samplus</groupId>
 	<artifactId>smartrecrutare</artifactId>
@@ -208,6 +209,7 @@
 			</plugin>
 			-->
 
+			<!-- Deployment pe serverul Tomcat local. .-->
 			<plugin>
 				<groupId>org.apache.tomcat.maven</groupId>
 				<artifactId>tomcat7-maven-plugin</artifactId>
@@ -217,14 +219,88 @@
 					<url>http://192.168.2.1:8080/manager/text</url>
 					<server>tomcat-remote</server>
 					<path>/web</path>
+					<update>true</update>
 					<username>deploy</username>
 					<password>1234</password>
-
 				</configuration>
-
 			</plugin>
 
 
+			<!-- Deployment pe serverul Cloud .- - >
+
+			<plugin>
+				<groupId>com.jcabi</groupId>
+				<artifactId>jcabi-beanstalk-maven-plugin</artifactId>
+				<version>0.11</version>
+				<configuration>
+					<! - - Cauzeaza un BUG json in beanstalk- <settings>
+						<ebextensions>false</ebextensions>
+						<failIfMissingEbextensions>false</failIfMissingEbextensions>
+					</settings>- - >
+					<name>Smartrecrutare-env-1</name>
+					<bucket>elasticbeanstalk-eu-north-1-131404649121</bucket>
+					<key>${project.artifactId}-${project.version}.war</key>
+					<!- - NU este necesar <template>example</template> - ->
+					<template>template-1</template>
+				</configuration>
+				<executions>
+					<execution>
+						<goals>
+							<goal>deploy</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>-->
+
+			<!-- versiunea rezolvata de plugin -->
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>exec-maven-plugin</artifactId>
+				<version>3.5.0</version>
+
+				<executions>
+
+					<execution>
+						<id>deploy-to-elastic-beanstalk</id>
+						<phase>deploy</phase>
+
+						<goals>
+							<goal>exec</goal>
+						</goals>
+
+						<configuration>
+
+							<!-- Windows shell -->
+							<executable>cmd</executable>
+
+							<arguments>
+								<argument>/c</argument>
+
+								<!-- We pass ONE safe command string, no XML & issues -->
+								<argument>
+
+									aws s3 cp "target\\${project.build.finalName}.war" "s3://elasticbeanstalk-eu-north-1-131404649121/${project.artifactId}-${project.version}.war"
+
+									aws elasticbeanstalk create-application-version ^
+									--application-name Smartrecrutare ^
+									--version-label ${project.version} ^
+									--auto-create-application ^
+									--source-bundle S3Bucket=elasticbeanstalk-eu-north-1-131404649121,S3Key=${project.artifactId}-${project.version}.war
+
+									aws elasticbeanstalk update-environment ^
+									--environment-name Smartrecrutare-env-1 ^
+									--version-label ${project.version}
+
+								</argument>
+
+							</arguments>
+
+						</configuration>
+
+					</execution>
+
+				</executions>
+			</plugin>
 		</plugins>
 	</build>
 

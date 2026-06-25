@@ -13,6 +13,7 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Schema(description = "Candidat din sistemul de recrutare")
 public class Candidat {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
