@@ -3,23 +3,17 @@ package com.samplus.smartrecrutare;
 import io.swagger.v3.oas.annotations.*;
 import io.swagger.v3.oas.annotations.media.*;
 import io.swagger.v3.oas.annotations.responses.*;
-import jakarta.annotation.PostConstruct;
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.ILoggerFactory;
-
-import jakarta.annotation.PostConstruct;
 import java.nio.file.*;
-import java.lang.management.ManagementFactory;
-import java.time.Instant;
 
 @RestController
 @RequestMapping("/api/candidati")
@@ -27,184 +21,106 @@ import java.time.Instant;
 @CrossOrigin(origins = "*") // pentru mediul DEV
 @Schema(description = "Controllerul de candidati. Aici sunt definite metodele")
 public class ControllerCandidat {
-    private final DepozitCandidati depCandidati;
+    private final ServiciuCandidat serviciuCandidat;
     // private final Logger log = LoggerFactory.getLogger(this.getClass());
     private static final Logger log = LoggerFactory.getLogger(ControllerCandidat.class);
 
-    protected ControllerCandidat(DepozitCandidati depozitCandidati) {
-        this.depCandidati = depozitCandidati;
+    protected ControllerCandidat(ServiciuCandidat serviciuCandidat) {
+        this.serviciuCandidat = serviciuCandidat;
     }
 
     @Operation(summary = "Creează un candidat nou",
             description = "Adaugă un candidat nou în baza de date")
     @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Candidat creat cu succes",
+                    content = @Content(schema = @Schema(implementation = Candidat.class))),
             @ApiResponse(responseCode = "200", description = "Candidat creat cu succes",
                     content = @Content(schema = @Schema(implementation = Candidat.class)))
     })
+    @Transactional
     @PostMapping
-    public Candidat creare(@RequestBody Candidat candidat) {
-        return depCandidati.save(candidat);
+    public ResponseEntity<Candidat> creare(@RequestBody Candidat candidat) {
+        Candidat salvat = serviciuCandidat.creare(candidat);
+        return ResponseEntity.status(HttpStatus.CREATED).body(salvat);
     }
 
+    @Transactional
     @DeleteMapping("/{numeCandidate}")
-    public Boolean stergere(@PathVariable String numeCandidate) {
-        log.info("S-a sters un candidat: {}", numeCandidate);
-        final Optional<Candidat> candidatOpt = depCandidati.findByNumePrenume(numeCandidate);
-        if (candidatOpt.isPresent()) {
-            depCandidati.delete(candidatOpt.get());
-            return true;
-        }
-
-        return false;
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Rezultatul operației de ștergere"),
+            @ApiResponse(responseCode = "400", description = "Parametru invalid")
+    })
+    public ResponseEntity<Boolean> stergere(@PathVariable String numeCandidate) {
+        boolean sters = serviciuCandidat.stergere(numeCandidate);
+        return ResponseEntity.ok(sters);
     }
 
-    @PutMapping("/{id}")
-    public Candidat update(@PathVariable Long id, @RequestBody Candidat candidat) {
-        return depCandidati.findById(id)
-                .map(existing -> {
-                    existing.setNumePrenume(candidat.getNumePrenume());
-                    existing.setMail(candidat.getMail());
-                    existing.setTel(candidat.getTel());
-                    // add other fields here
+    // -------------------------------------------------------------------------
+    // DELETE /api/candidati/id/{id}
+    // -------------------------------------------------------------------------
 
-                    return depCandidati.save(existing);
-                })
-                .orElseThrow(() -> new RuntimeException("Candidat inexistent"));
+    @Operation(summary = "Șterge un candidat după id",
+            description = "Mai sigur și mai performant decât ștergerea după nume.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Rezultatul operației de ștergere"),
+            @ApiResponse(responseCode = "400", description = "Id invalid")
+    })
+    @DeleteMapping("/id/{id}")
+    public ResponseEntity<Boolean> stergereById(@PathVariable Long id) {
+        boolean sters = serviciuCandidat.stergereById(id);
+        return ResponseEntity.ok(sters);
+    }
+
+    // -------------------------------------------------------------------------
+    // PUT /api/candidati/{id}
+    // -------------------------------------------------------------------------
+
+    @Operation(summary = "Actualizează un candidat existent",
+            description = "Actualizează câmpurile numePrenume, mail, tel. Id-ul din path are prioritate.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Candidat actualizat",
+                    content = @Content(schema = @Schema(implementation = Candidat.class))),
+            @ApiResponse(responseCode = "404", description = "Candidat inexistent"),
+            @ApiResponse(responseCode = "400", description = "Date invalide")
+    })
+    @PutMapping("/{id}")
+    public ResponseEntity<Candidat> actualizare(@PathVariable Long id,
+                                                @RequestBody Candidat dto) {
+        try {
+            Candidat actualizat = serviciuCandidat.actualizare(id, dto);
+            return ResponseEntity.ok(actualizat);
+        } catch (EntityNotFoundException e) {
+            log.warn("Actualizare esuata — candidat inexistent: id={}", id);
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @GetMapping
-    public Collection<Candidat> getTotiCandidatii() {
+    public ResponseEntity<Collection<Candidat>> getTotiCandidatii() {
         final long start = System.currentTimeMillis();
-        //var cand = depCandidati.findAll();
-        var cand = List.<Candidat>of();
+        Collection<Candidat> candidati = serviciuCandidat.getTotiCandidatii();
+        //var cand = List.<Candidat>of();
         final long sf = System.currentTimeMillis();
-        log.info("Query GetTotiCandidati() t={}]ms m={}", sf-start,cand.size());
-        return cand;
+        log.info("Query GetTotiCandidati() t={}]ms m={}", sf-start,candidati.size());
+        return ResponseEntity.ok(candidati);
     }
 
-    @PostConstruct
-    public void init() {
-        System.err.println("🔥🔥🔥 POSTCONSTRUCT SYSERR FIRED");
-        System.out.println("🔥🔥🔥 POSTCONSTRUCT SYSOUT FIRED");
-        log.error("🔥🔥🔥 LOGBACK POSTCONSTRUCT ERROR FIRED");
-        log.info("🔥🔥🔥 LOGBACK POSTCONSTRUCT INFO FIRED");
+
+    // -------------------------------------------------------------------------
+    // GET /api/candidati/{id}
+    // -------------------------------------------------------------------------
+
+    @Operation(summary = "Caută un candidat după id")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Candidat găsit",
+                    content = @Content(schema = @Schema(implementation = Candidat.class))),
+            @ApiResponse(responseCode = "404", description = "Candidat inexistent")
+    })
+    @GetMapping("/{id}")
+    public ResponseEntity<Candidat> gasireById(@PathVariable Long id) {
+        return serviciuCandidat.gasireById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
-    @GetMapping("/nuclear-test")
-    public String nuclearTest() {
-
-        System.err.println("🚨 SYSERR ENDPOINT HIT");
-        System.out.println("🚨 SYSOUT ENDPOINT HIT");
-
-        log.error("🚨 LOG ERROR ENDPOINT HIT");
-        log.warn("🚨 LOG WARN ENDPOINT HIT");
-        log.info("🚨 LOG INFO ENDPOINT HIT");
-        log.debug("🚨 LOG DEBUG ENDPOINT HIT");
-
-        try {
-            int x = 1 / 0;
-        } catch (Exception e) {
-            log.error("💥 EXCEPTION TEST", e);
-        }
-
-        return "NUCLEAR OK";
-    }
-
-    @PostConstruct
-    public void forceFileWrite() {
-        try {
-            java.nio.file.Files.writeString(
-                    java.nio.file.Paths.get("/tmp/direct-java.log"),
-                    "🔥 DIRECT JVM WRITE WORKING\n",
-                    java.nio.file.StandardOpenOption.CREATE,
-                    java.nio.file.StandardOpenOption.APPEND
-            );
-        } catch (Exception ignored) {}
-    }
-
-    @PostConstruct
-    public void probeLogging() {
-        System.err.println("SYSERR: LOGGER FACTORY = " + LoggerFactory.getILoggerFactory().getClass());
-    }
-
-    @PostConstruct
-    public void nuclearInstrumentation() {
-
-        String header = "\n\n🔥🔥🔥 NUCLEAR INSTRUMENTATION START " + Instant.now() + " 🔥🔥🔥\n";
-
-        // 1. Hard JVM output (bypasses everything)
-        System.err.println(header + "SYSERR ACTIVE");
-        System.out.println(header + "SYSOUT ACTIVE");
-
-        // 2. SLF4J test
-        log.error("🔥 SLF4J ERROR LEVEL ACTIVE");
-        log.warn("🔥 SLF4J WARN LEVEL ACTIVE");
-        log.info("🔥 SLF4J INFO LEVEL ACTIVE");
-        log.debug("🔥 SLF4J DEBUG LEVEL ACTIVE");
-
-        // 3. Logback binding check
-        try {
-            ILoggerFactory factory = LoggerFactory.getILoggerFactory();
-            System.err.println("LOGGER FACTORY CLASS = " + factory.getClass().getName());
-        } catch (Exception e) {
-            System.err.println("LOGGER FACTORY FAILED: " + e.getMessage());
-        }
-
-        // 4. JVM identity dump
-        try {
-            String jvmInfo = """
-                JVM NAME: %s
-                JVM VERSION: %s
-                PID: %s
-                """.formatted(
-                    System.getProperty("java.vm.name"),
-                    System.getProperty("java.version"),
-                    ManagementFactory.getRuntimeMXBean().getName()
-            );
-
-            System.err.println(jvmInfo);
-        } catch (Exception e) {
-            System.err.println("JVM INFO FAILED");
-        }
-
-        // 5. File system write test (absolute path bypass)
-        try {
-            Path p = Paths.get("/tmp/nuclear-instrumentation.log");
-
-            Files.writeString(
-                    p,
-                    header + "FILE WRITE ACTIVE\n",
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.APPEND
-            );
-
-            System.err.println("FILE WRITE SUCCESS: " + p);
-
-        } catch (Exception e) {
-            System.err.println("FILE WRITE FAILED: " + e.getMessage());
-        }
-
-        // 6. Classpath sanity check
-        try {
-            System.err.println("CLASS = " + getClass().getName());
-            System.err.println("CLASS LOADER = " + getClass().getClassLoader());
-        } catch (Exception e) {
-            System.err.println("CLASS CHECK FAILED");
-        }
-
-        // 7. Force exception capture test
-        try {
-            throw new RuntimeException("🔥 NUCLEAR TEST EXCEPTION");
-        } catch (Exception e) {
-            log.error("🔥 CAUGHT TEST EXCEPTION", e);
-            System.err.println("EXCEPTION STACK TEST COMPLETE");
-        }
-
-        System.err.println("🔥🔥🔥 NUCLEAR INSTRUMENTATION END 🔥🔥🔥\n\n");
-    }
-
-    // Optional endpoint trigger version
-    public void runOnDemand() {
-        nuclearInstrumentation();
-    }
 }

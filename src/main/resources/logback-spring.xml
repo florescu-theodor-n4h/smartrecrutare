@@ -34,10 +34,12 @@
     <!-- ===================== -->
     <appender name="APP_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
 
-        <file>/var/log/MySpringapp.log</file>
-
+        <file>/tmp/0logMySpringapp.log</file>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>/var/log/MySpringapp.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <fileNamePattern>/tmp/1logMySpringapp.%d{yyyy-MM-dd}.log</fileNamePattern>
             <maxHistory>10</maxHistory>
         </rollingPolicy>
 
