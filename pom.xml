@@ -11,7 +11,7 @@
 	</parent>
 	<groupId>com.samplus</groupId>
 	<artifactId>smartrecrutare</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.0.8-SNAPSHOT</version>
 	<name>Proiect Practica</name>
 	<description>
 		Proiect
@@ -34,7 +34,22 @@
 	<properties>
 		<java.version>17</java.version>
 		<node.version>v22.23.0</node.version>
-		<frontend.working.directory>C:\Users\theod\source\repos\smartrecrutare.vue</frontend.working.directory>
+		<!-- <frontend.working.directory>C:\Users\theod\source\repos\smartrecrutare.vue</frontend.working.directory> -->
+		<frontend.working.directory>${project.basedir}/../smartrecrutare.vue</frontend.working.directory>
+		<!-- AWS -->
+		<aws.bucket
+		>elasticbeanstalk-eu-north-1-131404649121</aws.bucket>
+		<aws.app>Smartrecrutare-dev-vpc</aws.app>
+		<aws.env>Smartrecrutare-dev-vpc-env-1</aws.env>
+		<aws.region-file>${project.artifactId}.war</aws.region-file>
+		<!-- ********** local deployment -->
+		<tomcat.url>http://192.168.2.1:8080/manager/text</tomcat.url>
+		<tomcat.server>tomcat-remote</tomcat.server>
+		<tomcat.path>/web</tomcat.path>
+		<tomcat.update>true</tomcat.update>
+		<tomcat.username>deploy</tomcat.username>
+		<tomcat.password><!--****-->1234</tomcat.password>
+
 	</properties>
 
 	<dependencies>
@@ -48,7 +63,7 @@
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-webmvc</artifactId>
+			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
 
 		<dependency>
@@ -56,21 +71,14 @@
 			<artifactId>postgresql</artifactId>
 			<scope>runtime</scope>
 		</dependency>
+
+		<!-- TEST -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-data-jpa-test</artifactId>
+			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-validation-test</artifactId>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-webmvc-test</artifactId>
-			<scope>test</scope>
-		</dependency>
+
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
@@ -80,12 +88,24 @@
 		<dependency>
 			<groupId>org.springdoc</groupId>
 			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-			<version>2.8.6</version>
+			<version>3.0.3</version>
 		</dependency>
 	</dependencies>
 	<profiles>
 		<profile>
-			<id>remote-deploy</id>
+			<id>DEBUG</id>
+		</profile>
+		<profile>
+			<id>RELEASE</id>
+		</profile>
+		<!-- Se ruleaza in mediul de dezvoltare -->
+		<profile>
+			<id>normal-IDE-run</id>
+		</profile>
+		<!-- Se ruleaza pe LAN 192.... -->
+		<!-- se ruleaza pe serverul Cloud -->
+		<profile>
+			<id>deployment-server-remote-provided</id>
 			<dependencies>
 				<dependency>
 					<groupId>org.springframework.boot</groupId>
@@ -93,6 +113,66 @@
 					<scope>provided</scope>
 				</dependency>
 			</dependencies>
+
+			<build>
+			<plugins>
+				<!-- Deployment pe serverul Tomcat local. .-->
+				<plugin>
+					<groupId>org.apache.tomcat.maven</groupId>
+					<artifactId>tomcat7-maven-plugin</artifactId>
+					<version>2.2</version>
+
+					<configuration>
+						<url>${tomcat.url}</url>
+						<server>${tomcat.server}</server>
+						<path>${tomcat.path}</path>
+						<update>${tomcat.update}</update>
+						<username>${tomcat.username}</username>
+						<password>${tomcat.password}</password>
+					</configuration>
+				</plugin>
+
+
+				<!-- Deployment pe serverul Cloud .- - >
+
+                <plugin>
+                    <groupId>com.jcabi</groupId>
+                    <artifactId>jcabi-beanstalk-maven-plugin</artifactId>
+                    <version>0.11</version>
+                    <configuration>
+                        <! - - Cauzeaza un BUG json in beanstalk- <settings>
+                            <ebextensions>false</ebextensions>
+                            <failIfMissingEbextensions>false</failIfMissingEbextensions>
+                        </settings>- - >
+                        <name>Smartrecrutare-env-1</name>
+                        <bucket>elasticbeanstalk-eu-north-1-131404649121</bucket>
+                        <key>${project.artifactId}-${project.version}.war</key>
+                        <!- - NU este necesar <template>example</template> - ->
+                        <template>template-1</template>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>deploy</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>-->
+
+				<!-- versiunea rezolvata de plugin -->
+				<!-- fara blocul de <executions>, plugin fara faza Maven, binding on-demand -->
+				<plugin>
+					<groupId>com.samplus</groupId>
+					<artifactId>smartrecrutare-plugin</artifactId>
+					<version>1.11</version>
+					<configuration>
+						<s3Bucket>${aws.bucket}</s3Bucket>
+						<ebApplicationName>${aws.app}</ebApplicationName>
+						<ebEnvironmentName>${aws.env}</ebEnvironmentName>
+					</configuration>
+				</plugin>
+			</plugins>
+			</build>
 		</profile>
 	</profiles>
 	<build>
@@ -209,98 +289,6 @@
 			</plugin>
 			-->
 
-			<!-- Deployment pe serverul Tomcat local. .-->
-			<plugin>
-				<groupId>org.apache.tomcat.maven</groupId>
-				<artifactId>tomcat7-maven-plugin</artifactId>
-				<version>2.2</version>
-
-				<configuration>
-					<url>http://192.168.2.1:8080/manager/text</url>
-					<server>tomcat-remote</server>
-					<path>/web</path>
-					<update>true</update>
-					<username>deploy</username>
-					<password>1234</password>
-				</configuration>
-			</plugin>
-
-
-			<!-- Deployment pe serverul Cloud .- - >
-
-			<plugin>
-				<groupId>com.jcabi</groupId>
-				<artifactId>jcabi-beanstalk-maven-plugin</artifactId>
-				<version>0.11</version>
-				<configuration>
-					<! - - Cauzeaza un BUG json in beanstalk- <settings>
-						<ebextensions>false</ebextensions>
-						<failIfMissingEbextensions>false</failIfMissingEbextensions>
-					</settings>- - >
-					<name>Smartrecrutare-env-1</name>
-					<bucket>elasticbeanstalk-eu-north-1-131404649121</bucket>
-					<key>${project.artifactId}-${project.version}.war</key>
-					<!- - NU este necesar <template>example</template> - ->
-					<template>template-1</template>
-				</configuration>
-				<executions>
-					<execution>
-						<goals>
-							<goal>deploy</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>-->
-
-			<!-- versiunea rezolvata de plugin -->
-			<plugin>
-				<groupId>org.codehaus.mojo</groupId>
-				<artifactId>exec-maven-plugin</artifactId>
-				<version>3.5.0</version>
-
-				<executions>
-
-					<execution>
-						<id>deploy-to-elastic-beanstalk</id>
-						<phase>deploy</phase>
-
-						<goals>
-							<goal>exec</goal>
-						</goals>
-
-						<configuration>
-
-							<!-- Windows shell -->
-							<executable>cmd</executable>
-
-							<arguments>
-								<argument>/c</argument>
-
-								<!-- We pass ONE safe command string, no XML & issues -->
-								<argument>
-
-									aws s3 cp "target\\${project.build.finalName}.war" "s3://elasticbeanstalk-eu-north-1-131404649121/${project.artifactId}-${project.version}.war"
-
-									aws elasticbeanstalk create-application-version ^
-									--application-name Smartrecrutare ^
-									--version-label ${project.version} ^
-									--auto-create-application ^
-									--source-bundle S3Bucket=elasticbeanstalk-eu-north-1-131404649121,S3Key=${project.artifactId}-${project.version}.war
-
-									aws elasticbeanstalk update-environment ^
-									--environment-name Smartrecrutare-env-1 ^
-									--version-label ${project.version}
-
-								</argument>
-
-							</arguments>
-
-						</configuration>
-
-					</execution>
-
-				</executions>
-			</plugin>
 		</plugins>
 	</build>
 

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <property name="LOG_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{40} - %msg%n"/>
+
+
+    <logger name="com.samplus.smartrecrutare" level="DEBUG"/>
+
+    <logger name="org.springframework" level="INFO"/>
+
+    <logger name="org.hibernate" level="DEBUG"/>
+    <logger name="org.hibernate.SQL" level="DEBUG"/>
+    <logger name="org.hibernate.orm.jdbc.bind" level="TRACE"/>
+    <property name="NUCLEAR_LOG" value="/tmp/spring-nuclear.log"/>
+
+    <!-- FILE APPENDER (PRIMARY) -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${NUCLEAR_LOG}</file>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>/tmp/spring-nuclear.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>5</maxHistory>
+        </rollingPolicy>
+
+        <encoder>
+            <pattern>
+                [NUCLEAR] %d{HH:mm:ss.SSS} %-5level %thread %logger{36} - %msg%n
+            </pattern>
+        </encoder>
+    </appender>
+
+    <!-- ===================== -->
+    <!-- APP LOG FILE -->
+    <!-- ===================== -->
+    <appender name="APP_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+
+        <file>/var/log/MySpringapp.log</file>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>/var/log/MySpringapp.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>10</maxHistory>
+        </rollingPolicy>
+
+        <encoder>
+            <pattern>[APP] %d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %thread %logger{36} - %msg%n</pattern>
+        </encoder>
+
+    </appender>
+
+    <!-- CONSOLE (for EB/Tomcat capture if it exists) -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>[CONSOLE] %d %-5level %logger - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- ROOT = EVERYTHING -->
+    <root level="DEBUG">
+        <appender-ref ref="FILE"/>
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="APP_FILE"/>
+    </root>
+
+</configuration>

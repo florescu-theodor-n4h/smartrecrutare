@@ -12,7 +12,6 @@ public class HandlerExceptiiGlobal {
 
     @ExceptionHandler(NoHandlerFoundException.class)
     public void handleNoHandlerFound(NoHandlerFoundException ex, HttpServletRequest request) {
-
-        log.warn("Unknown request: {} {}", request.getMethod(), request.getRequestURI());
+        log.error("Unknown request: {} {}", request.getMethod(), request.getRequestURI());
     }
 }
