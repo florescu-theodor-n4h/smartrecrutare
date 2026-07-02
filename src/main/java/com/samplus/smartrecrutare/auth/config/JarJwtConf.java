@@ -23,7 +23,8 @@ public class JarJwtConf {
     @Qualifier("jarPrivateKey")
     public RSAPrivateKey jarPrivateKey(
             Auth0Props properties,
-            ResourceLoader resourceLoader
+            ResourceLoader resourceLoader,
+            PemLoader pemLoader
     ) throws Exception {
         Resource resource = resourceLoader.getResource(
                 properties.getJar().getPrivateKeyLocation()
@@ -34,14 +35,15 @@ public class JarJwtConf {
             pem = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
         }
 
-        return PemLoader.readPrivateKey(pem);
+        return pemLoader.readPrivateKey(pem);
     }
 
     @Bean
     @Qualifier("jarPublicKey")
     public RSAPublicKey jarPublicKey(
             Auth0Props properties,
-            ResourceLoader resourceLoader
+            ResourceLoader resourceLoader,
+            PemLoader pemLoader
     ) throws Exception {
         Resource resource = resourceLoader.getResource(
                 properties.getJar().getPublicKeyLocation()
@@ -52,7 +54,7 @@ public class JarJwtConf {
             pem = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
         }
 
-        return PemLoader.readPublicKey(pem);
+        return pemLoader.readPublicKey(pem);
     }
 
     @Bean

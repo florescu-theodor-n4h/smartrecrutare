@@ -14,7 +14,7 @@ import java.util.Base64;
 @Service
 @RequiredArgsConstructor
 public final class PemLoader {
-    public static RSAPrivateKey readPrivateKey(String pem) {
+    public RSAPrivateKey readPrivateKey(String pem) {
         try {
             String cleaned = pem
                     .replace("-----BEGIN PRIVATE KEY-----", "")
@@ -32,7 +32,7 @@ public final class PemLoader {
         }
     }
 
-    public static RSAPublicKey readPublicKey(String pem) {
+    public RSAPublicKey readPublicKey(String pem) {
         try {
             String cleaned = pem
                     .replace("-----BEGIN PUBLIC KEY-----", "")
