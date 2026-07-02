@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.security.config.Customizer;
@@ -67,8 +68,10 @@ public class SecurityConfig {
                     }
                 })
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/public/**").permitAll()
                         .requestMatchers("/api/**").authenticated()
+                        .requestMatchers("/bot/**").authenticated()
                         .requestMatchers("/bots/**").authenticated()
                         .anyRequest().permitAll()
                 )
