@@ -9,7 +9,6 @@ spring:
     driver-class-name: org.postgresql.Driver
 
   jpa:
-    # se rezolva problema
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: update
@@ -23,6 +22,15 @@ spring:
   web:
     resources:
       add-mappings: false
+
+  # Provider: Auth0
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://dev-hqeowpbz7cmw3n3m.us.auth0.com
+          audiences:
+            - mjMWbQgLWxFrLAmMrtfni5CjQhOQRaTK
 logging:
   config: classpath:logback-spring.xml
   #level:
@@ -31,3 +39,19 @@ logging:
     #org.hibernate: DEBUG
     #org.hibernate.SQL: DEBUG
     #org.hibernate.orm.jdbc.bind: TRACE
+
+
+#server:
+#  port: 8080
+
+auth0:
+  domain: YOUR_TENANT.eu.auth0.com
+  client-id: YOUR_AUTH0_CLIENT_ID
+  client-secret: YOUR_AUTH0_CLIENT_SECRET
+  audience: https://your-api
+  redirect-uri: http://localhost:8080/auth/callback
+  vue-redirect-uri: http://localhost:5173
+  jar:
+    key-id: YOUR_AUTH0_JAR_KEY_ID
+    private-key-location: classpath:local-secrets/auth0-jar-private-key.pem
+    public-key-location: classpath:local-secrets/auth0-jar-public-key.pem

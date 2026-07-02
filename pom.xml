@@ -11,7 +11,7 @@
 	</parent>
 	<groupId>com.samplus</groupId>
 	<artifactId>smartrecrutare</artifactId>
-	<version>0.0.8-SNAPSHOT</version>
+	<version>0.0.10-SNAPSHOT</version>
 	<name>Proiect Practica</name>
 	<description>
 		Proiect
@@ -19,20 +19,23 @@
 	<url>http://192.168.2.1/</url>
 	<!-- Serverul integrat accepta acest mod de packaging -->
 	<packaging>war</packaging>
-	<licenses>
-		<license/>
-	</licenses>
 	<developers>
-		<developer/>
+		<developer>
+			<name>Florescu Theodor-Adrian</name>
+			<email>florescu.theodor.n4h@student.ucv.ro</email>
+		</developer>
 	</developers>
+	<!-- Repository GitHub -->
 	<scm>
-		<connection/>
-		<developerConnection/>
-		<tag/>
-		<url/>
+		<connection>scm:git:https://github.com/florescu-theodor-n4h/smartrecrutare.git</connection>
+		<developerConnection>scm:git:git@github.com:florescu-theodor-n4h/smartrecrutare.git</developerConnection>
+		<tag>HEAD</tag>
+		<url>https://github.com/florescu-theodor-n4h/smartrecrutare</url>
 	</scm>
 	<properties>
 		<java.version>17</java.version>
+
+		<!-- Versiuni software JS pentru frontend -->
 		<node.version>v22.23.0</node.version>
 		<!-- <frontend.working.directory>C:\Users\theod\source\repos\smartrecrutare.vue</frontend.working.directory> -->
 		<frontend.working.directory>${project.basedir}/../smartrecrutare.vue</frontend.working.directory>
@@ -53,26 +56,65 @@
 	</properties>
 
 	<dependencies>
+		<!-- Spring Data JPA: adauga suport pentru lucrul cu baze de date relationale prin JPA/Hibernate.
+     Iti permite sa folosesti entitati, repository-uri, tranzactii si mapare automata obiect-tabel. -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
 		</dependency>
+
+		<!-- Spring Validation: adauga validare declarativa pentru DTO-uri, request-uri si entitati.
+     Folosesti adnotari ca @NotNull, @NotBlank, @Size, @Email sau @Positive pentru reguli clare de business. -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-validation</artifactId>
 		</dependency>
+
+		<!-- Spring Web: adauga suport pentru aplicatii web si API-uri REST clasice.
+     Include Spring MVC, controllere REST, JSON prin Jackson si server web embedded, de obicei Tomcat. -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
 
+		<!-- Spring RestClient: adauga noul client HTTP modern pentru apeluri catre alte API-uri.
+     Este varianta recomandata pentru cod sincron, mai curata decat vechiul RestTemplate. -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-restclient</artifactId>
+		</dependency>
+
+		<!-- PostgreSQL Driver: driverul JDBC necesar pentru conectarea aplicatiei la baza de date PostgreSQL.
+     Scope runtime inseamna ca este necesar la rulare, dar nu trebuie folosit direct la compilarea codului. -->
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
 			<scope>runtime</scope>
 		</dependency>
 
-		<!-- TEST -->
+		<!-- Spring Security: adauga autentificare, autorizare si protectii de securitate pentru aplicatie.
+     Este baza pentru reguli de acces, filtre security, parole, sesiuni sau integrare cu token-uri. -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+
+		<!-- OAuth2 Resource Server: permite aplicatiei sa valideze token-uri OAuth2/JWT primite de la clienti.
+     Se foloseste cand backend-ul tau este un API protejat cu Bearer Token, Keycloak, Auth0 sau alt provider. -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+		</dependency>
+
+		<!-- JSpecify: noua solutie standard pentru null-safety in Spring Framework 7 / Spring Boot 4.
+     Foloseste @NullMarked si @Nullable din org.jspecify.annotations, in locul vechilor adnotari Spring/javax. -->
+		<dependency>
+			<groupId>org.jspecify</groupId>
+			<artifactId>jspecify</artifactId>
+			<version>1.0.0</version>
+		</dependency>
+
+		<!-- TEST - dependinte pentru Testing -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
@@ -97,10 +139,6 @@
 		</profile>
 		<profile>
 			<id>RELEASE</id>
-		</profile>
-		<!-- Se ruleaza in mediul de dezvoltare -->
-		<profile>
-			<id>normal-IDE-run</id>
 		</profile>
 		<!-- Se ruleaza pe LAN 192.... -->
 		<!-- se ruleaza pe serverul Cloud -->
@@ -171,6 +209,99 @@
 						<ebEnvironmentName>${aws.env}</ebEnvironmentName>
 					</configuration>
 				</plugin>
+
+
+				<!-- PLUGIN compilare -->
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-resources-plugin</artifactId>
+					<executions>
+						<execution>
+							<id>copy-frontend-to-temp</id>
+							<phase>generate-resources</phase>
+							<goals>
+								<goal>copy-resources</goal>
+							</goals>
+							<configuration>
+								<outputDirectory>${project.build.directory}/frontend-work</outputDirectory>
+
+								<resources>
+									<resource>
+										<directory>${frontend.working.directory}</directory>
+										<filtering>false</filtering>
+
+										<excludes>
+											<exclude>**/node_modules/**</exclude>
+											<exclude>**/dist/**</exclude>
+										</excludes>
+									</resource>
+								</resources>
+							</configuration>
+						</execution>
+
+						<execution>
+							<id>copy-vue-build</id>
+							<phase>process-resources</phase>
+							<goals>
+								<goal>copy-resources</goal>
+							</goals>
+							<configuration>
+								<outputDirectory>${project.build.outputDirectory}/static</outputDirectory>
+								<resources>
+									<resource>
+										<directory>${project.build.directory}/frontend-work/dist</directory>
+										<filtering>false</filtering>
+									</resource>
+								</resources>
+							</configuration>
+						</execution>
+					</executions>
+				</plugin>
+				<plugin>
+					<groupId>com.github.eirslett</groupId>
+					<artifactId>frontend-maven-plugin</artifactId>
+					<version>1.15.0</version>
+
+					<configuration>
+						<workingDirectory>${project.build.directory}/frontend-work</workingDirectory>
+					</configuration>
+
+					<executions>
+
+						<execution>
+							<id>install node</id>
+							<goals>
+								<goal>install-node-and-npm</goal>
+							</goals>
+							<configuration>
+								<nodeVersion>${node.version}</nodeVersion>
+							</configuration>
+						</execution>
+
+						<execution>
+							<id>npm install</id>
+							<goals>
+								<goal>npm</goal>
+							</goals>
+							<configuration>
+								<arguments>install</arguments>
+							</configuration>
+						</execution>
+
+						<execution>
+							<id>npm build</id>
+							<goals>
+								<goal>npm</goal>
+							</goals>
+							<phase>generate-resources</phase>
+							<configuration>
+								<arguments>run build</arguments>
+							</configuration>
+						</execution>
+
+					</executions>
+				</plugin>
+				<!--PLUGIN compilare frontend-->
 			</plugins>
 			</build>
 		</profile>
@@ -196,99 +327,6 @@
 					</annotationProcessorPaths>
 				</configuration>
 			</plugin>
-
-			<!-- PLUGIN compilare
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-resources-plugin</artifactId>
-				<executions>
-					<execution>
-						<id>copy-frontend-to-temp</id>
-						<phase>generate-resources</phase>
-						<goals>
-							<goal>copy-resources</goal>
-						</goals>
-						<configuration>
-							<outputDirectory>${project.build.directory}/frontend-work</outputDirectory>
-
-							<resources>
-								<resource>
-									<directory>${frontend.working.directory}</directory>
-									<filtering>false</filtering>
-
-									<excludes>
-										<exclude>**/node_modules/**</exclude>
-										<exclude>**/dist/**</exclude>
-									</excludes>
-								</resource>
-							</resources>
-						</configuration>
-					</execution>
-
-					<execution>
-						<id>copy-vue-build</id>
-						<phase>process-resources</phase>
-						<goals>
-							<goal>copy-resources</goal>
-						</goals>
-						<configuration>
-							<outputDirectory>${project.build.outputDirectory}/static</outputDirectory>
-							<resources>
-								<resource>
-									<directory>${project.build.directory}/frontend-work/dist</directory>
-									<filtering>false</filtering>
-								</resource>
-							</resources>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
-			<plugin>
-				<groupId>com.github.eirslett</groupId>
-				<artifactId>frontend-maven-plugin</artifactId>
-				<version>1.15.0</version>
-
-				<configuration>
-					<workingDirectory>${project.build.directory}/frontend-work</workingDirectory>
-				</configuration>
-
-				<executions>
-
-					<execution>
-						<id>install node</id>
-						<goals>
-							<goal>install-node-and-npm</goal>
-						</goals>
-						<configuration>
-							<nodeVersion>${node.version}</nodeVersion>
-						</configuration>
-					</execution>
-
-					<execution>
-						<id>npm install</id>
-						<goals>
-							<goal>npm</goal>
-						</goals>
-						<configuration>
-							<arguments>install</arguments>
-						</configuration>
-					</execution>
-
-					<execution>
-						<id>npm build</id>
-						<goals>
-							<goal>npm</goal>
-						</goals>
-						<phase>generate-resources</phase>
-						<configuration>
-							<arguments>run build</arguments>
-						</configuration>
-					</execution>
-
-				</executions>
-			</plugin>
-			-->
-
 		</plugins>
 	</build>
 

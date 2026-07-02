@@ -36,3 +36,6 @@ build/
 .elasticbeanstalk/*
 !.elasticbeanstalk/*.cfg.yml
 !.elasticbeanstalk/*.global.yml
+
+#Private keys
+src/main/resources/local-secrets/
