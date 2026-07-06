@@ -11,7 +11,8 @@ import java.util.Locale;
 @Component
 public class ResolverDestinatarCurent {
     public String rezolva(Authentication authentication) {
-        if (authentication.getPrincipal() instanceof Jwt jwt) {
+        if (authentication.getPrincipal() instanceof Jwt) {
+            Jwt jwt = (Jwt) authentication.getPrincipal();
             String email = jwt.getClaimAsString("email");
             if (StringUtils.hasText(email)) {
                 return email.trim().toLowerCase(Locale.ROOT);

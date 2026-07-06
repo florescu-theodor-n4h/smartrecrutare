@@ -1,9 +1,15 @@
 package com.samplus.smartrecrutare.bot.dto.response;
 
-public record PageMetadataResponse(
-        int page,
-        int size,
-        long totalElements,
-        int totalPages
-) {
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class PageMetadataResponse {
+    private int page;
+    private int size;
+    private long totalElements;
+    private int totalPages;
 }

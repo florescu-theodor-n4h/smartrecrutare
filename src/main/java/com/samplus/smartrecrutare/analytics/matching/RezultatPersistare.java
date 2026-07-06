@@ -1,5 +1,10 @@
 package com.samplus.smartrecrutare.analytics.matching;
 
+import lombok.Value;
+
 /** Indicatorii produsi de persistarea unui singur rezultat. */
-public record RezultatPersistare(boolean pestePrag, boolean notificarePublicata) {
+@Value
+public class RezultatPersistare {
+    boolean pestePrag;
+    boolean notificarePublicata;
 }

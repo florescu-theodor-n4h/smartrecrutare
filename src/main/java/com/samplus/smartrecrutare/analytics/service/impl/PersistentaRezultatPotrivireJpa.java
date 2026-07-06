@@ -43,27 +43,27 @@ public class PersistentaRezultatPotrivireJpa implements PersistentaRezultatPotri
     public RezultatPersistare salveaza(ScorPotrivire scor) {
         RezultatPotrivire rezultat = rezultatRepository
                 .findByCandidatIdAndJobIdAndTiparId(
-                        scor.profil().candidatId(),
-                        scor.job().jobId(),
-                        scor.tipar().tiparId()
+                        scor.getProfil().getCandidatId(),
+                        scor.getJob().getJobId(),
+                        scor.getTipar().getTiparId()
                 )
                 .orElseGet(() -> RezultatPotrivire.creare(
-                        entityManager.getReference(Candidat.class, scor.profil().candidatId()),
-                        entityManager.getReference(Job.class, scor.job().jobId()),
-                        entityManager.getReference(TiparPotrivire.class, scor.tipar().tiparId())
+                        entityManager.getReference(Candidat.class, scor.getProfil().getCandidatId()),
+                        entityManager.getReference(Job.class, scor.getJob().getJobId()),
+                        entityManager.getReference(TiparPotrivire.class, scor.getTipar().getTiparId())
                 ));
         StarePotrivire stareAnterioara = rezultat.getStare();
         rezultat.evaluare(
-                scor.total(),
-                scor.abilitati(),
-                scor.locatie(),
-                scor.contract(),
-                scor.cuvinteCheie(),
-                scor.stare()
+                scor.getTotal(),
+                scor.getAbilitati(),
+                scor.getLocatie(),
+                scor.getContract(),
+                scor.getCuvinteCheie(),
+                scor.getStare()
         );
         rezultatRepository.saveAndFlush(rezultat);
 
-        boolean publica = scor.stare() == StarePotrivire.PESTE_PRAG
+        boolean publica = scor.getStare() == StarePotrivire.PESTE_PRAG
                 && stareAnterioara != StarePotrivire.PESTE_PRAG
                 && !notificareRepository.existsByRezultatPotrivireIdAndMesajId(
                         rezultat.getId(),
@@ -71,20 +71,20 @@ public class PersistentaRezultatPotrivireJpa implements PersistentaRezultatPotri
                 );
         if (publica) {
             NotificareAnalitica notificare = NotificareAnalitica.creare(
-                    scor.profil().emailCandidat().trim().toLowerCase(Locale.ROOT),
+                    scor.getProfil().getEmailCandidat().trim().toLowerCase(Locale.ROOT),
                     MesajeNotificare.POTRIVIRE_DISPONIBILA,
                     Map.of(
-                            MesajeNotificare.NUME_CANDIDAT, substituent(scor.profil().numeCandidat()),
-                            MesajeNotificare.TITLU_JOB, substituent(scor.job().titlu()),
-                            MesajeNotificare.COMPANIE, substituent(scor.job().companie()),
-                            MesajeNotificare.SCOR, Integer.toString(scor.total()),
+                            MesajeNotificare.NUME_CANDIDAT, substituent(scor.getProfil().getNumeCandidat()),
+                            MesajeNotificare.TITLU_JOB, substituent(scor.getJob().getTitlu()),
+                            MesajeNotificare.COMPANIE, substituent(scor.getJob().getCompanie()),
+                            MesajeNotificare.SCOR, Integer.toString(scor.getTotal()),
                             MesajeNotificare.REZULTAT_ID, rezultat.getId().toString()
                     ),
                     rezultat
             );
             notificareRepository.save(notificare);
         }
-        return new RezultatPersistare(scor.stare() == StarePotrivire.PESTE_PRAG, publica);
+        return new RezultatPersistare(scor.getStare() == StarePotrivire.PESTE_PRAG, publica);
     }
 
     private String substituent(String valoare) {

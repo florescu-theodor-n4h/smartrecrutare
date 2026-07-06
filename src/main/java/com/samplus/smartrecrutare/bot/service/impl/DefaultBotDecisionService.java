@@ -35,9 +35,9 @@ public class DefaultBotDecisionService implements BotDecisionService {
                 properties.getHistoryLimit()
         );
         return robotClient.chat(new RobotChatRequest(
-                context.conversationId(),
-                context.currentPrompt(),
-                context.messages()
-        )).content();
+                context.getConversationId(),
+                context.getCurrentPrompt(),
+                context.getMessages()
+        )).getContent();
     }
 }

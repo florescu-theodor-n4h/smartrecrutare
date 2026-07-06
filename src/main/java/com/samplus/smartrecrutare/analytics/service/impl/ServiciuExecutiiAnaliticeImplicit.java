@@ -28,7 +28,7 @@ public class ServiciuExecutiiAnaliticeImplicit implements ServiciuExecutiiAnalit
     @Override
     public ExecutieAnaliticaResponse solicitaExecutie() {
         ExecutieAnaliticaResponse executie = registru.creareInAsteptare();
-        procesator.proceseaza(executie.id());
+        procesator.proceseaza(executie.getId());
         return executie;
     }
 

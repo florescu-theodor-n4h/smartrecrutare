@@ -29,24 +29,14 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, UUID> 
 
     long countByConversationId(UUID conversationId);
 
-    @Query("""
-            select m.id as id,
-                   parent.id as parentId,
-                   m.role as role,
-                   m.content as content
-              from ChatMessage m
-              left join m.parent parent
-             where m.conversation.id = :conversationId
-            """)
+    @Query("select m.id as id, parent.id as parentId, m.role as role, m.content as content "
+            + "from ChatMessage m left join m.parent parent "
+            + "where m.conversation.id = :conversationId")
     List<MessageContextProjection> findContextRows(@Param("conversationId") UUID conversationId);
 
     @Modifying(flushAutomatically = true)
-    @Query("""
-            update ChatMessage message
-               set message.parent = null
-             where message.conversation.id = :conversationId
-               and message.parent is not null
-            """)
+    @Query("update ChatMessage message set message.parent = null "
+            + "where message.conversation.id = :conversationId and message.parent is not null")
     int clearParents(@Param("conversationId") UUID conversationId);
 
     @Modifying(flushAutomatically = true)

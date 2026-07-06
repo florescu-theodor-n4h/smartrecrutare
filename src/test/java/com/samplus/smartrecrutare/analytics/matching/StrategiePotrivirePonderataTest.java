@@ -44,11 +44,11 @@ class StrategiePotrivirePonderataTest {
 
         ScorPotrivire scor = strategie.calculeaza(profil, job, tipar);
 
-        assertThat(scor.abilitati()).isEqualTo(100);
-        assertThat(scor.locatie()).isEqualTo(100);
-        assertThat(scor.contract()).isEqualTo(100);
-        assertThat(scor.cuvinteCheie()).isEqualTo(50);
-        assertThat(scor.total()).isEqualTo(90);
-        assertThat(scor.stare()).isEqualTo(StarePotrivire.PESTE_PRAG);
+        assertThat(scor.getAbilitati()).isEqualTo(100);
+        assertThat(scor.getLocatie()).isEqualTo(100);
+        assertThat(scor.getContract()).isEqualTo(100);
+        assertThat(scor.getCuvinteCheie()).isEqualTo(50);
+        assertThat(scor.getTotal()).isEqualTo(90);
+        assertThat(scor.getStare()).isEqualTo(StarePotrivire.PESTE_PRAG);
     }
 }

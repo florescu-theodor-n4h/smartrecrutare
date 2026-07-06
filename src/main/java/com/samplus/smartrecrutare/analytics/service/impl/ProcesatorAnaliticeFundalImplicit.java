@@ -1,6 +1,11 @@
 package com.samplus.smartrecrutare.analytics.service.impl;
 
+import com.samplus.smartrecrutare.analytics.matching.DateJobPotrivire;
+import com.samplus.smartrecrutare.analytics.matching.DateProfilPotrivire;
+import com.samplus.smartrecrutare.analytics.matching.DateTiparPotrivire;
+import com.samplus.smartrecrutare.analytics.matching.LotDatePotrivire;
 import com.samplus.smartrecrutare.analytics.matching.RezultatPersistare;
+import com.samplus.smartrecrutare.analytics.matching.ScorPotrivire;
 import com.samplus.smartrecrutare.analytics.matching.StrategiePotrivire;
 import com.samplus.smartrecrutare.analytics.service.FurnizorDatePotrivire;
 import com.samplus.smartrecrutare.analytics.service.PersistentaRezultatPotrivire;
@@ -43,21 +48,21 @@ public class ProcesatorAnaliticeFundalImplicit implements ProcesatorAnaliticeFun
     public CompletableFuture<Void> proceseaza(UUID executieId) {
         try {
             registru.marcheazaPornita(executieId);
-            var lot = furnizorDate.citeste();
+            LotDatePotrivire lot = furnizorDate.citeste();
             long evaluate = 0;
             long pestePrag = 0;
             long notificari = 0;
 
-            for (var tipar : lot.tipare()) {
-                for (var profil : lot.profiluri()) {
-                    for (var job : lot.joburi()) {
-                        var scor = strategie.calculeaza(profil, job, tipar);
+            for (DateTiparPotrivire tipar : lot.getTipare()) {
+                for (DateProfilPotrivire profil : lot.getProfiluri()) {
+                    for (DateJobPotrivire job : lot.getJoburi()) {
+                        ScorPotrivire scor = strategie.calculeaza(profil, job, tipar);
                         RezultatPersistare rezultat = persistenta.salveaza(scor);
                         evaluate++;
-                        if (rezultat.pestePrag()) {
+                        if (rezultat.isPestePrag()) {
                             pestePrag++;
                         }
-                        if (rezultat.notificarePublicata()) {
+                        if (rezultat.isNotificarePublicata()) {
                             notificari++;
                         }
                     }

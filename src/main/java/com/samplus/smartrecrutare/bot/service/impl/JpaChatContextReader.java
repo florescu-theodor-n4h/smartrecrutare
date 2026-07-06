@@ -52,7 +52,7 @@ public class JpaChatContextReader implements ChatContextReader {
             );
         }
 
-        var branchNewestFirst = new ArrayList<RobotMessage>();
+        ArrayList<RobotMessage> branchNewestFirst = new ArrayList<>();
         Set<UUID> visited = new HashSet<>();
         UUID cursor = leafMessageId;
         while (cursor != null && branchNewestFirst.size() < historyLimit) {

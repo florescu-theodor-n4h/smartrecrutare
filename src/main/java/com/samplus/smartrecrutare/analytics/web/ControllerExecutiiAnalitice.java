@@ -59,7 +59,7 @@ public class ControllerExecutiiAnalitice {
         ExecutieAnaliticaResponse raspuns = serviciu.solicitaExecutie();
         URI locatie = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{executieId}")
-                .buildAndExpand(raspuns.id())
+                .buildAndExpand(raspuns.getId())
                 .toUri();
         return ResponseEntity.status(HttpStatus.ACCEPTED).location(locatie).body(raspuns);
     }

@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /** Implementare tranzactionala pentru tiparele de potrivire. */
 @Service
@@ -44,18 +45,18 @@ public class ServiciuTiparePotrivireImplicit implements ServiciuTiparePotrivire 
     @Transactional
     public TiparPotrivireResponse creare(CreareTiparPotrivireRequest request) {
         valideaza(request);
-        if (tiparRepository.existsByNumeIgnoreCase(request.nume().trim())) {
+        if (tiparRepository.existsByNumeIgnoreCase(request.getNume().trim())) {
             throw new ConflictAnaliticException("Exista deja un tipar cu acelasi nume");
         }
         TiparPotrivire tipar = TiparPotrivire.creare(
-                request.nume().trim(),
-                textOptional(request.descriere()),
-                request.pondereAbilitati(),
-                request.pondereLocatie(),
-                request.pondereContract(),
-                request.pondereCuvinteCheie(),
-                request.pragNotificare(),
-                request.activ()
+                request.getNume().trim(),
+                textOptional(request.getDescriere()),
+                request.getPondereAbilitati(),
+                request.getPondereLocatie(),
+                request.getPondereContract(),
+                request.getPondereCuvinteCheie(),
+                request.getPragNotificare(),
+                request.getActiv()
         );
         tiparRepository.saveAndFlush(tipar);
         return mapper.tipar(tipar);
@@ -71,21 +72,24 @@ public class ServiciuTiparePotrivireImplicit implements ServiciuTiparePotrivire 
     @Transactional(readOnly = true)
     public PaginaModel<TiparPotrivireResponse> listare(Pageable pageable) {
         var pagina = tiparRepository.findAllByOrderByNumeAsc(pageable);
-        return mapper.pagina(pagina, pagina.getContent().stream().map(mapper::tipar).toList());
+        return mapper.pagina(
+                pagina,
+                pagina.getContent().stream().map(mapper::tipar).collect(Collectors.toList())
+        );
     }
 
     @Override
     @Transactional
     public TiparPotrivireResponse inlocuire(UUID tiparId, ActualizareTiparPotrivireRequest request) {
         TiparPotrivire tipar = tipar(tiparId);
-        validatorVersiune.verifica("Tiparul", tiparId, tipar.getVersion(), request.versiune());
-        valideaza(request.tipar());
-        tiparRepository.findByNumeIgnoreCase(request.tipar().nume().trim())
+        validatorVersiune.verifica("Tiparul", tiparId, tipar.getVersion(), request.getVersiune());
+        valideaza(request.getTipar());
+        tiparRepository.findByNumeIgnoreCase(request.getTipar().getNume().trim())
                 .filter(altTipar -> !altTipar.getId().equals(tiparId))
                 .ifPresent(altTipar -> {
                     throw new ConflictAnaliticException("Exista deja un tipar cu acelasi nume");
                 });
-        aplica(tipar, request.tipar());
+        aplica(tipar, request.getTipar());
         tiparRepository.flush();
         return mapper.tipar(tipar);
     }
@@ -110,10 +114,10 @@ public class ServiciuTiparePotrivireImplicit implements ServiciuTiparePotrivire 
     }
 
     private void valideaza(CreareTiparPotrivireRequest request) {
-        int total = request.pondereAbilitati()
-                + request.pondereLocatie()
-                + request.pondereContract()
-                + request.pondereCuvinteCheie();
+        int total = request.getPondereAbilitati()
+                + request.getPondereLocatie()
+                + request.getPondereContract()
+                + request.getPondereCuvinteCheie();
         if (total != 100) {
             throw new CerereAnaliticaInvalidaException("Ponderile tiparului trebuie sa insumeze 100");
         }
@@ -121,14 +125,14 @@ public class ServiciuTiparePotrivireImplicit implements ServiciuTiparePotrivire 
 
     private void aplica(TiparPotrivire tipar, CreareTiparPotrivireRequest request) {
         tipar.inlocuire(
-                request.nume().trim(),
-                textOptional(request.descriere()),
-                request.pondereAbilitati(),
-                request.pondereLocatie(),
-                request.pondereContract(),
-                request.pondereCuvinteCheie(),
-                request.pragNotificare(),
-                request.activ()
+                request.getNume().trim(),
+                textOptional(request.getDescriere()),
+                request.getPondereAbilitati(),
+                request.getPondereLocatie(),
+                request.getPondereContract(),
+                request.getPondereCuvinteCheie(),
+                request.getPragNotificare(),
+                request.getActiv()
         );
     }
 

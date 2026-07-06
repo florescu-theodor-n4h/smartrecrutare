@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class DefaultConversationService implements ConversationService {
@@ -43,8 +44,8 @@ public class DefaultConversationService implements ConversationService {
     @Transactional
     public ConversationResponse create(CreateConversationRequest request) {
         BotConversation conversation = BotConversation.create(
-                request.title().trim(),
-                request.currentPrompt().trim()
+                request.getTitle().trim(),
+                request.getCurrentPrompt().trim()
         );
         conversationRepository.saveAndFlush(conversation);
         return mapper.toConversation(conversation, 0);
@@ -56,7 +57,7 @@ public class DefaultConversationService implements ConversationService {
         var page = conversationRepository.findSummaries(pageable);
         var responses = page.getContent().stream()
                 .map(summary -> mapper.toConversation(summary.getConversation(), summary.getMessageCount()))
-                .toList();
+                .collect(Collectors.toList());
         return new ConversationPageResponse(responses, mapper.toPageMetadata(page));
     }
 
@@ -71,8 +72,8 @@ public class DefaultConversationService implements ConversationService {
     @Transactional
     public ConversationResponse update(UUID conversationId, UpdateConversationRequest request) {
         BotConversation conversation = requireConversation(conversationId);
-        versionValidator.verify("Conversation", conversationId, conversation.getVersion(), request.version());
-        conversation.update(request.title().trim(), request.currentPrompt().trim());
+        versionValidator.verify("Conversation", conversationId, conversation.getVersion(), request.getVersion());
+        conversation.update(request.getTitle().trim(), request.getCurrentPrompt().trim());
         conversationRepository.flush();
         return mapper.toConversation(conversation, messageRepository.countByConversationId(conversationId));
     }
@@ -98,8 +99,8 @@ public class DefaultConversationService implements ConversationService {
     @Transactional
     public PromptResponse updatePrompt(UUID conversationId, UpdatePromptRequest request) {
         BotConversation conversation = requireConversation(conversationId);
-        versionValidator.verify("Conversation", conversationId, conversation.getVersion(), request.version());
-        conversation.changePrompt(request.currentPrompt().trim());
+        versionValidator.verify("Conversation", conversationId, conversation.getVersion(), request.getVersion());
+        conversation.changePrompt(request.getCurrentPrompt().trim());
         conversationRepository.flush();
         return mapper.toPrompt(conversation);
     }

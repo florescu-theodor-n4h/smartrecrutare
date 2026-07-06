@@ -11,6 +11,9 @@ import com.samplus.smartrecrutare.analytics.service.FurnizorDatePotrivire;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 /** Citeste si copiaza datele in obiecte imutabile. */
 @Service
 public class FurnizorDatePotrivireJpa implements FurnizorDatePotrivire {
@@ -32,7 +35,7 @@ public class FurnizorDatePotrivireJpa implements FurnizorDatePotrivire {
     @Override
     @Transactional(readOnly = true)
     public LotDatePotrivire citeste() {
-        var profiluri = profilRepository.gasesteToatePentruPotrivire().stream()
+        List<DateProfilPotrivire> profiluri = profilRepository.gasesteToatePentruPotrivire().stream()
                 .map(profil -> new DateProfilPotrivire(
                         profil.getCandidat().getId(),
                         profil.getCandidat().getNumePrenume(),
@@ -42,8 +45,8 @@ public class FurnizorDatePotrivireJpa implements FurnizorDatePotrivire {
                         profil.getTipContractPreferat(),
                         profil.getCuvinteCheie()
                 ))
-                .toList();
-        var joburi = depozitJoburi.findByActivTrue().stream()
+                .collect(Collectors.toList());
+        List<DateJobPotrivire> joburi = depozitJoburi.findByActivTrue().stream()
                 .map(job -> new DateJobPotrivire(
                         job.getId(),
                         job.getTitlu(),
@@ -52,8 +55,8 @@ public class FurnizorDatePotrivireJpa implements FurnizorDatePotrivire {
                         job.getLocatie(),
                         job.getTipContract()
                 ))
-                .toList();
-        var tipare = tiparRepository.findByActivTrueOrderByNumeAsc().stream()
+                .collect(Collectors.toList());
+        List<DateTiparPotrivire> tipare = tiparRepository.findByActivTrueOrderByNumeAsc().stream()
                 .map(tipar -> new DateTiparPotrivire(
                         tipar.getId(),
                         tipar.getNume(),
@@ -63,7 +66,7 @@ public class FurnizorDatePotrivireJpa implements FurnizorDatePotrivire {
                         tipar.getPondereCuvinteCheie(),
                         tipar.getPragNotificare()
                 ))
-                .toList();
+                .collect(Collectors.toList());
         return new LotDatePotrivire(profiluri, joburi, tipare);
     }
 }

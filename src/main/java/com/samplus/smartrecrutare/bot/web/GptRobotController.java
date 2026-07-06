@@ -76,7 +76,7 @@ public class GptRobotController {
         ConversationResponse response = conversationService.create(request);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{conversationId}")
-                .buildAndExpand(response.id())
+                .buildAndExpand(response.getId())
                 .toUri();
         return ResponseEntity.created(location).body(response);
     }
@@ -141,7 +141,7 @@ public class GptRobotController {
         ChatMessageResponse response = messageService.create(conversationId, request);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{messageId}")
-                .buildAndExpand(response.id())
+                .buildAndExpand(response.getId())
                 .toUri();
         return ResponseEntity.created(location).body(response);
     }

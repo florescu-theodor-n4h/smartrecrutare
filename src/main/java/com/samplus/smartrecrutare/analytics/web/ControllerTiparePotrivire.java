@@ -66,7 +66,7 @@ public class ControllerTiparePotrivire {
         TiparPotrivireResponse raspuns = serviciu.creare(request);
         URI locatie = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{tiparId}")
-                .buildAndExpand(raspuns.id())
+                .buildAndExpand(raspuns.getId())
                 .toUri();
         return ResponseEntity.created(locatie).body(raspuns);
     }

@@ -24,7 +24,7 @@ public class RestRobotClient implements RobotClient {
                     .retrieve()
                     .body(RobotChatResponse.class);
 
-            if (response == null || !StringUtils.hasText(response.content())) {
+            if (response == null || !StringUtils.hasText(response.getContent())) {
                 throw new RobotClientException("Robot API returned an empty response");
             }
             return response;

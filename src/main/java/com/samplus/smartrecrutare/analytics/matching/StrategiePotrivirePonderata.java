@@ -18,19 +18,19 @@ public class StrategiePotrivirePonderata implements StrategiePotrivire {
             DateJobPotrivire job,
             DateTiparPotrivire tipar
     ) {
-        String textJob = normalizare(job.titlu() + " " + valoare(job.descriere()));
-        int scorAbilitati = procentPotriviri(profil.abilitati(), textJob, false);
-        int scorLocatie = scorPreferinta(profil.locatiiPreferate(), job.locatie());
-        int scorContract = scorValoareOptionala(profil.tipContractPreferat(), job.tipContract());
-        int scorCuvinte = procentPotriviri(profil.cuvinteCheie(), textJob, true);
+        String textJob = normalizare(job.getTitlu() + " " + valoare(job.getDescriere()));
+        int scorAbilitati = procentPotriviri(profil.getAbilitati(), textJob, false);
+        int scorLocatie = scorPreferinta(profil.getLocatiiPreferate(), job.getLocatie());
+        int scorContract = scorValoareOptionala(profil.getTipContractPreferat(), job.getTipContract());
+        int scorCuvinte = procentPotriviri(profil.getCuvinteCheie(), textJob, true);
 
         int total = Math.toIntExact(Math.round((
-                (long) scorAbilitati * tipar.pondereAbilitati()
-                        + (long) scorLocatie * tipar.pondereLocatie()
-                        + (long) scorContract * tipar.pondereContract()
-                        + (long) scorCuvinte * tipar.pondereCuvinteCheie()
+                (long) scorAbilitati * tipar.getPondereAbilitati()
+                        + (long) scorLocatie * tipar.getPondereLocatie()
+                        + (long) scorContract * tipar.getPondereContract()
+                        + (long) scorCuvinte * tipar.getPondereCuvinteCheie()
         ) / 100.0));
-        StarePotrivire stare = total >= tipar.pragNotificare()
+        StarePotrivire stare = total >= tipar.getPragNotificare()
                 ? StarePotrivire.PESTE_PRAG
                 : StarePotrivire.SUB_PRAG;
 

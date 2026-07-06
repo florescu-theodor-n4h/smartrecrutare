@@ -18,11 +18,13 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import lombok.Getter;
 
 import java.time.Instant;
 import java.util.UUID;
 
 /** Rezultat unic pentru combinatia candidat, job si tipar. */
+@Getter
 @Entity
 @Table(
         name = "analytics_match_results",
@@ -109,15 +111,4 @@ public class RezultatPotrivire extends AuditableEntity {
         this.evaluatLa = Instant.now();
     }
 
-    public UUID getId() { return id; }
-    public Candidat getCandidat() { return candidat; }
-    public Job getJob() { return job; }
-    public TiparPotrivire getTipar() { return tipar; }
-    public int getScorTotal() { return scorTotal; }
-    public int getScorAbilitati() { return scorAbilitati; }
-    public int getScorLocatie() { return scorLocatie; }
-    public int getScorContract() { return scorContract; }
-    public int getScorCuvinteCheie() { return scorCuvinteCheie; }
-    public StarePotrivire getStare() { return stare; }
-    public Instant getEvaluatLa() { return evaluatLa; }
 }

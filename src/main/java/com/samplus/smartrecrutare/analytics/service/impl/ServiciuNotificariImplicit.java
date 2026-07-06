@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /** Implementare persistenta pentru centrul de notificari. */
 @Service
@@ -42,23 +43,29 @@ public class ServiciuNotificariImplicit implements ServiciuNotificari {
                 destinatar,
                 pageable
         );
-        return mapper.pagina(pagina, pagina.getContent().stream().map(mapper::notificare).toList());
+        return mapper.pagina(
+                pagina,
+                pagina.getContent().stream().map(mapper::notificare).collect(Collectors.toList())
+        );
     }
 
     @Override
     @Transactional(readOnly = true)
     public PaginaModel<NotificareResponse> listareAdministrativa(Pageable pageable) {
         var pagina = notificareRepository.findAllByOrderByCreatedAtDesc(pageable);
-        return mapper.pagina(pagina, pagina.getContent().stream().map(mapper::notificare).toList());
+        return mapper.pagina(
+                pagina,
+                pagina.getContent().stream().map(mapper::notificare).collect(Collectors.toList())
+        );
     }
 
     @Override
     @Transactional
     public NotificareResponse publicare(PublicareNotificareRequest request) {
         NotificareAnalitica notificare = NotificareAnalitica.creare(
-                request.destinatar().trim().toLowerCase(java.util.Locale.ROOT),
-                request.mesajId().trim(),
-                request.substituenti() == null ? Map.of() : request.substituenti(),
+                request.getDestinatar().trim().toLowerCase(java.util.Locale.ROOT),
+                request.getMesajId().trim(),
+                request.getSubstituenti() == null ? Map.of() : request.getSubstituenti(),
                 null
         );
         notificareRepository.saveAndFlush(notificare);
@@ -81,7 +88,7 @@ public class ServiciuNotificariImplicit implements ServiciuNotificari {
                 "Notificarea",
                 notificareId,
                 notificare.getVersion(),
-                request.versiune()
+                request.getVersiune()
         );
         notificare.marcheazaCitita();
         notificareRepository.flush();

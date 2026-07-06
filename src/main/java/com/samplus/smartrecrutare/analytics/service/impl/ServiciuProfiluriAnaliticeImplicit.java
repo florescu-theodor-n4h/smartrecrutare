@@ -18,6 +18,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 /** Implementare tranzactionala pentru profilurile analitice. */
 @Service
 public class ServiciuProfiluriAnaliticeImplicit implements ServiciuProfiluriAnalitice {
@@ -68,7 +71,9 @@ public class ServiciuProfiluriAnaliticeImplicit implements ServiciuProfiluriAnal
     @Transactional(readOnly = true)
     public PaginaModel<ProfilCandidatResponse> listare(Pageable pageable) {
         var pagina = profilRepository.findAllByOrderByUpdatedAtDesc(pageable);
-        var continut = pagina.getContent().stream().map(mapper::profil).toList();
+        List<ProfilCandidatResponse> continut = pagina.getContent().stream()
+                .map(mapper::profil)
+                .collect(Collectors.toList());
         return mapper.pagina(pagina, continut);
     }
 
@@ -76,8 +81,8 @@ public class ServiciuProfiluriAnaliticeImplicit implements ServiciuProfiluriAnal
     @Transactional
     public ProfilCandidatResponse inlocuire(Long candidatId, ActualizareProfilCandidatRequest request) {
         ProfilAnaliticCandidat profil = profilComplet(candidatId);
-        validatorVersiune.verifica("Profilul candidatului", candidatId, profil.getVersion(), request.versiune());
-        aplica(profil, request.profil());
+        validatorVersiune.verifica("Profilul candidatului", candidatId, profil.getVersion(), request.getVersiune());
+        aplica(profil, request.getProfil());
         profilRepository.flush();
         return mapper.profil(profil);
     }
@@ -100,10 +105,10 @@ public class ServiciuProfiluriAnaliticeImplicit implements ServiciuProfiluriAnal
 
     private void aplica(ProfilAnaliticCandidat profil, ProfilCandidatRequest request) {
         profil.inlocuire(
-                normalizator.multime(request.abilitati()),
-                normalizator.multime(request.locatiiPreferate()),
-                normalizator.textOptional(request.tipContractPreferat()),
-                normalizator.multime(request.cuvinteCheie())
+                normalizator.multime(request.getAbilitati()),
+                normalizator.multime(request.getLocatiiPreferate()),
+                normalizator.textOptional(request.getTipContractPreferat()),
+                normalizator.multime(request.getCuvinteCheie())
         );
     }
 }

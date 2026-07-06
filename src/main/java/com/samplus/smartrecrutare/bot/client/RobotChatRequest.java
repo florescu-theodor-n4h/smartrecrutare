@@ -1,11 +1,17 @@
 package com.samplus.smartrecrutare.bot.client;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.util.List;
 import java.util.UUID;
 
-public record RobotChatRequest(
-        UUID conversationReference,
-        String prompt,
-        List<RobotMessage> messages
-) {
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class RobotChatRequest {
+    private UUID conversationReference;
+    private String prompt;
+    private List<RobotMessage> messages;
 }

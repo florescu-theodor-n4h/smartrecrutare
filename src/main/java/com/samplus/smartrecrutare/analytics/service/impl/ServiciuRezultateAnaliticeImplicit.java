@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /** Agrega interogarile necesare paginii administratorului. */
 @Service
@@ -61,7 +62,10 @@ public class ServiciuRezultateAnaliticeImplicit implements ServiciuRezultateAnal
         var pagina = stare == null
                 ? rezultatRepository.findAllByOrderByScorTotalDesc(pageable)
                 : rezultatRepository.findByStareOrderByScorTotalDesc(stare, pageable);
-        return mapper.pagina(pagina, pagina.getContent().stream().map(mapper::rezultat).toList());
+        return mapper.pagina(
+                pagina,
+                pagina.getContent().stream().map(mapper::rezultat).collect(Collectors.toList())
+        );
     }
 
     @Override

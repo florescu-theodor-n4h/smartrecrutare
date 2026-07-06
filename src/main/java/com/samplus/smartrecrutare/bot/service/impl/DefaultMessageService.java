@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class DefaultMessageService implements MessageService {
@@ -50,12 +51,12 @@ public class DefaultMessageService implements MessageService {
     @Transactional
     public ChatMessageResponse create(UUID conversationId, CreateMessageRequest request) {
         BotConversation conversation = requireConversation(conversationId);
-        ChatMessage parent = requireParent(conversationId, request.parentMessageId());
+        ChatMessage parent = requireParent(conversationId, request.getParentMessageId());
         ChatMessage message = ChatMessage.create(
                 conversation,
                 parent,
-                request.role(),
-                request.content().trim()
+                request.getRole(),
+                request.getContent().trim()
         );
         messageRepository.saveAndFlush(message);
         return mapper.toMessage(message);
@@ -66,7 +67,7 @@ public class DefaultMessageService implements MessageService {
     public ChatHistoryResponse findHistory(UUID conversationId, Pageable pageable) {
         BotConversation conversation = requireConversation(conversationId);
         var page = messageRepository.findByConversationIdOrderByCreatedAtAsc(conversationId, pageable);
-        var entries = page.getContent().stream().map(mapper::toMessage).toList();
+        var entries = page.getContent().stream().map(mapper::toMessage).collect(Collectors.toList());
         return new ChatHistoryResponse(
                 conversationId,
                 conversation.getCurrentPrompt(),
@@ -91,10 +92,10 @@ public class DefaultMessageService implements MessageService {
             UpdateMessageRequest request
     ) {
         ChatMessage message = requireMessage(conversationId, messageId);
-        versionValidator.verify("Message", messageId, message.getVersion(), request.version());
-        ChatMessage parent = requireParent(conversationId, request.parentMessageId());
+        versionValidator.verify("Message", messageId, message.getVersion(), request.getVersion());
+        ChatMessage parent = requireParent(conversationId, request.getParentMessageId());
         ensureAcyclic(conversationId, messageId, parent);
-        message.update(parent, request.role(), request.content().trim());
+        message.update(parent, request.getRole(), request.getContent().trim());
         messageRepository.flush();
         return mapper.toMessage(message);
     }

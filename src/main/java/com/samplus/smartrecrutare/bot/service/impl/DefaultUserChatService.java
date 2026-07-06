@@ -48,46 +48,46 @@ public class DefaultUserChatService implements UserChatService {
     @Override
     public UserChatResponse chat(UserChatRequest request) {
         ConversationResponse conversation = resolveConversation(request);
-        UUID parentMessageId = request.parentMessageId();
+        UUID parentMessageId = request.getParentMessageId();
         if (parentMessageId == null) {
-            parentMessageId = messageService.findLatestMessageId(conversation.id()).orElse(null);
+            parentMessageId = messageService.findLatestMessageId(conversation.getId()).orElse(null);
         }
 
         ChatMessageResponse userMessage = messageService.create(
-                conversation.id(),
-                new CreateMessageRequest(parentMessageId, MessageRole.USER, request.message())
+                conversation.getId(),
+                new CreateMessageRequest(parentMessageId, MessageRole.USER, request.getMessage())
         );
         String assistantContent = decisionService.createAssistantReply(
-                conversation.id(),
-                userMessage.id()
+                conversation.getId(),
+                userMessage.getId()
         );
         ChatMessageResponse assistantMessage = messageService.create(
-                conversation.id(),
-                new CreateMessageRequest(userMessage.id(), MessageRole.ASSISTANT, assistantContent)
+                conversation.getId(),
+                new CreateMessageRequest(userMessage.getId(), MessageRole.ASSISTANT, assistantContent)
         );
 
         return new UserChatResponse(
-                conversationService.findById(conversation.id()),
+                conversationService.findById(conversation.getId()),
                 userMessage,
                 assistantMessage
         );
     }
 
     private ConversationResponse resolveConversation(UserChatRequest request) {
-        if (request.conversationId() != null) {
-            if (StringUtils.hasText(request.title()) || StringUtils.hasText(request.currentPrompt())) {
+        if (request.getConversationId() != null) {
+            if (StringUtils.hasText(request.getTitle()) || StringUtils.hasText(request.getCurrentPrompt())) {
                 throw new BotValidationException(
                         "title and currentPrompt may only be supplied when starting a conversation"
                 );
             }
-            return conversationService.findById(request.conversationId());
+            return conversationService.findById(request.getConversationId());
         }
 
-        String title = StringUtils.hasText(request.title())
-                ? request.title().trim()
-                : generatedTitle(request.message());
-        String prompt = StringUtils.hasText(request.currentPrompt())
-                ? request.currentPrompt().trim()
+        String title = StringUtils.hasText(request.getTitle())
+                ? request.getTitle().trim()
+                : generatedTitle(request.getMessage());
+        String prompt = StringUtils.hasText(request.getCurrentPrompt())
+                ? request.getCurrentPrompt().trim()
                 : properties.getDefaultPrompt();
         return conversationService.create(new CreateConversationRequest(title, prompt));
     }

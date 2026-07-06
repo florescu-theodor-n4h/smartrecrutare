@@ -6,6 +6,8 @@ import com.samplus.smartrecrutare.bot.dto.request.CreateMessageRequest;
 import com.samplus.smartrecrutare.bot.dto.request.UserChatRequest;
 import com.samplus.smartrecrutare.bot.dto.response.ChatMessageResponse;
 import com.samplus.smartrecrutare.bot.dto.response.ConversationResponse;
+import com.samplus.smartrecrutare.bot.dto.response.UserChatResponse;
+import com.samplus.smartrecrutare.bot.exception.BotValidationException;
 import com.samplus.smartrecrutare.bot.service.BotDecisionService;
 import com.samplus.smartrecrutare.bot.service.ConversationService;
 import com.samplus.smartrecrutare.bot.service.MessageService;
@@ -16,8 +18,13 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -62,7 +69,7 @@ class DefaultUserChatServiceTest {
                 new CreateMessageRequest(userId, MessageRole.ASSISTANT, "Hi")
         )).thenReturn(assistant);
 
-        var response = service.chat(new UserChatRequest(
+        UserChatResponse response = service.chat(new UserChatRequest(
                 conversationId,
                 null,
                 null,
@@ -70,9 +77,9 @@ class DefaultUserChatServiceTest {
                 "Hello"
         ));
 
-        assertThat(response.conversation().messageCount()).isEqualTo(3);
-        assertThat(response.userMessage()).isEqualTo(user);
-        assertThat(response.assistantMessage()).isEqualTo(assistant);
+        assertThat(response.getConversation().getMessageCount()).isEqualTo(3);
+        assertThat(response.getUserMessage()).isEqualTo(user);
+        assertThat(response.getAssistantMessage()).isEqualTo(assistant);
         var order = inOrder(messageService, decisionService);
         order.verify(messageService).create(
                 conversationId,
@@ -84,6 +91,75 @@ class DefaultUserChatServiceTest {
                 new CreateMessageRequest(userId, MessageRole.ASSISTANT, "Hi")
         );
         verify(messageService).findLatestMessageId(conversationId);
+    }
+
+    @Test
+    void usesExplicitParentWithoutLoadingTheLatestMessage() {
+        UUID conversationId = UUID.randomUUID();
+        UUID parentId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        ConversationResponse conversation = conversation(conversationId, 2);
+        ChatMessageResponse user = message(userId, conversationId, parentId, MessageRole.USER, "Question");
+        ChatMessageResponse assistant = message(
+                UUID.randomUUID(), conversationId, userId, MessageRole.ASSISTANT, "Answer"
+        );
+
+        when(conversationService.findById(conversationId)).thenReturn(conversation);
+        when(messageService.create(
+                conversationId,
+                new CreateMessageRequest(parentId, MessageRole.USER, "Question")
+        )).thenReturn(user);
+        when(decisionService.createAssistantReply(conversationId, userId)).thenReturn("Answer");
+        when(messageService.create(
+                conversationId,
+                new CreateMessageRequest(userId, MessageRole.ASSISTANT, "Answer")
+        )).thenReturn(assistant);
+
+        service.chat(new UserChatRequest(conversationId, parentId, null, null, "Question"));
+
+        verify(messageService, never()).findLatestMessageId(conversationId);
+    }
+
+    @Test
+    void rejectsConversationMetadataWhenContinuingAnExistingConversation() {
+        UUID conversationId = UUID.randomUUID();
+
+        assertThatThrownBy(() -> service.chat(new UserChatRequest(
+                conversationId,
+                null,
+                "Changed title",
+                null,
+                "Hello"
+        )))
+                .isInstanceOf(BotValidationException.class)
+                .hasMessageContaining("only be supplied when starting");
+
+        verifyNoInteractions(conversationService, messageService, decisionService);
+    }
+
+    @Test
+    void doesNotPersistAssistantMessageWhenRobotCallFails() {
+        UUID conversationId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        ConversationResponse conversation = conversation(conversationId, 0);
+        ChatMessageResponse user = message(userId, conversationId, null, MessageRole.USER, "Hello");
+
+        when(conversationService.findById(conversationId)).thenReturn(conversation);
+        when(messageService.findLatestMessageId(conversationId)).thenReturn(Optional.empty());
+        when(messageService.create(
+                conversationId,
+                new CreateMessageRequest(null, MessageRole.USER, "Hello")
+        )).thenReturn(user);
+        when(decisionService.createAssistantReply(conversationId, userId))
+                .thenThrow(new IllegalStateException("robot unavailable"));
+
+        assertThatThrownBy(() -> service.chat(new UserChatRequest(
+                conversationId, null, null, null, "Hello"
+        )))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("robot unavailable");
+
+        verify(messageService, times(1)).create(any(UUID.class), any(CreateMessageRequest.class));
     }
 
     private ConversationResponse conversation(UUID id, long count) {

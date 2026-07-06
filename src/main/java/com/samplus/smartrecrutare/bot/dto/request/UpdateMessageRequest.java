@@ -5,13 +5,26 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.UUID;
 
-public record UpdateMessageRequest(
-        UUID parentMessageId,
-        @NotNull MessageRole role,
-        @NotBlank @Size(max = 64_000) String content,
-        @NotNull @PositiveOrZero Long version
-) {
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class UpdateMessageRequest {
+    private UUID parentMessageId;
+
+    @NotNull
+    private MessageRole role;
+
+    @NotBlank
+    @Size(max = 64_000)
+    private String content;
+
+    @NotNull
+    @PositiveOrZero
+    private Long version;
 }

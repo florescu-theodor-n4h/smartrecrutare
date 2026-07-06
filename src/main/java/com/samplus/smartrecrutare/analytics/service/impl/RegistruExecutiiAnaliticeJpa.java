@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /** Registru JPA cu tranzactii independente pentru actualizarea progresului. */
 @Service
@@ -59,7 +60,10 @@ public class RegistruExecutiiAnaliticeJpa implements RegistruExecutiiAnalitice {
     @Transactional(readOnly = true)
     public PaginaModel<ExecutieAnaliticaResponse> listare(Pageable pageable) {
         var pagina = repository.findAllByOrderByCreatedAtDesc(pageable);
-        return mapper.pagina(pagina, pagina.getContent().stream().map(mapper::executie).toList());
+        return mapper.pagina(
+                pagina,
+                pagina.getContent().stream().map(mapper::executie).collect(Collectors.toList())
+        );
     }
 
     @Override

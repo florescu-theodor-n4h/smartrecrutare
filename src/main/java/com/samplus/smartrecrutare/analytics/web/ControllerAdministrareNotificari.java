@@ -71,7 +71,7 @@ public class ControllerAdministrareNotificari {
         NotificareResponse raspuns = serviciu.publicare(request);
         URI locatie = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{notificareId}")
-                .buildAndExpand(raspuns.id())
+                .buildAndExpand(raspuns.getId())
                 .toUri();
         return ResponseEntity.created(locatie).body(raspuns);
     }
