@@ -3,6 +3,7 @@ package com.samplus.smartrecrutare;
 import com.samplus.smartrecrutare.job.dto.JobCreateRequest;
 import com.samplus.smartrecrutare.job.dto.JobResponse;
 import com.samplus.smartrecrutare.job.dto.JobUpdateRequest;
+import com.samplus.smartrecrutare.security.RoluriAplicatie;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -15,6 +16,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -48,6 +50,7 @@ public class ControllerJoburi {
     @ApiResponse(responseCode = "200", description = "Lista joburi",
             content = @Content(array = @ArraySchema(schema = @Schema(implementation = JobResponse.class))))
     @GetMapping
+    @PreAuthorize(RoluriAplicatie.BUSINESS_READ)
     public ResponseEntity<Collection<JobResponse>> getJobs() {
         return ResponseEntity.ok(serviciuJoburi.getToateJoburileDto());
     }
@@ -59,6 +62,7 @@ public class ControllerJoburi {
             @ApiResponse(responseCode = "404", description = "Job inexistent")
     })
     @GetMapping("/{id}")
+    @PreAuthorize(RoluriAplicatie.BUSINESS_READ)
     public ResponseEntity<JobResponse> getJob(
             @Parameter(description = "ID-ul jobului", required = true)
             @PathVariable Long id
@@ -77,6 +81,7 @@ public class ControllerJoburi {
             @ApiResponse(responseCode = "404", description = "Angajator inexistent")
     })
     @PostMapping
+    @PreAuthorize(RoluriAplicatie.ADMIN_OR_MANAGER)
     public ResponseEntity<JobResponse> createJob(@Valid @RequestBody JobCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(serviciuJoburi.creareDinRequest(request));
     }
@@ -92,6 +97,7 @@ public class ControllerJoburi {
             @ApiResponse(responseCode = "404", description = "Job sau angajator inexistent")
     })
     @PutMapping("/{id}")
+    @PreAuthorize(RoluriAplicatie.ADMIN_OR_MANAGER)
     public ResponseEntity<JobResponse> updateJob(
             @Parameter(description = "ID-ul jobului de actualizat", required = true)
             @PathVariable Long id,
@@ -106,6 +112,7 @@ public class ControllerJoburi {
             @ApiResponse(responseCode = "400", description = "ID invalid")
     })
     @DeleteMapping("/{id}")
+    @PreAuthorize(RoluriAplicatie.ADMIN)
     public ResponseEntity<Boolean> deleteJob(
             @Parameter(description = "ID-ul jobului de sters", required = true)
             @PathVariable Long id

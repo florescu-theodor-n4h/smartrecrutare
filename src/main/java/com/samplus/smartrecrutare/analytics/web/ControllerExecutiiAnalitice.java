@@ -34,7 +34,6 @@ import java.util.UUID;
 @RestController
 @Validated
 @RequestMapping("/api/admin/analytics/runs")
-@PreAuthorize(RoluriAnalitice.ADMIN)
 @SecurityRequirement(name = "bearerAuth")
 @Tag(name = "Executii analitice", description = "Pornire asincrona si monitorizare fara blocarea cererii HTTP")
 public class ControllerExecutiiAnalitice {
@@ -55,6 +54,7 @@ public class ControllerExecutiiAnalitice {
             @ApiResponse(responseCode = "409", description = "Alta executie este deja activa")
     })
     @PostMapping
+    @PreAuthorize(RoluriAnalitice.ADMIN)
     public ResponseEntity<ExecutieAnaliticaResponse> pornire() {
         ExecutieAnaliticaResponse raspuns = serviciu.solicitaExecutie();
         URI locatie = ServletUriComponentsBuilder.fromCurrentRequest()
@@ -68,6 +68,7 @@ public class ControllerExecutiiAnalitice {
     @ApiResponse(responseCode = "200", description = "Pagina de executii",
             content = @Content(schema = @Schema(implementation = PaginaModel.class)))
     @GetMapping
+    @PreAuthorize(RoluriAnalitice.CITIRE_ADMINISTRATIVA)
     public ResponseEntity<PaginaModel<ExecutieAnaliticaResponse>> listare(
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
@@ -82,6 +83,7 @@ public class ControllerExecutiiAnalitice {
             @ApiResponse(responseCode = "404", description = "Executie inexistenta")
     })
     @GetMapping("/{executieId}")
+    @PreAuthorize(RoluriAnalitice.CITIRE_ADMINISTRATIVA)
     public ResponseEntity<ExecutieAnaliticaResponse> gasire(
             @Parameter(description = "Identificatorul executiei", required = true)
             @PathVariable UUID executieId

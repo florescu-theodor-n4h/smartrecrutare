@@ -1,5 +1,6 @@
 package com.samplus.smartrecrutare.auth.config;
 
+import com.samplus.smartrecrutare.security.RbacJwtAuthenticationConverter;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -68,14 +69,23 @@ public class SecurityConfig {
                 })
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/jobs/active").permitAll()
+                        .requestMatchers("/auth/login", "/auth/callback", "/auth/me").permitAll()
                         .requestMatchers("/public/**").permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .requestMatchers("/bot/**").authenticated()
                         .requestMatchers("/bots/**").authenticated()
                         .anyRequest().permitAll()
                 )
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt ->
+                        jwt.jwtAuthenticationConverter(rbacJwtAuthenticationConverter())
+                ))
                 .build();
+    }
+
+    @Bean
+    RbacJwtAuthenticationConverter rbacJwtAuthenticationConverter() {
+        return new RbacJwtAuthenticationConverter();
     }
     @Bean
     @Qualifier("secureRestClient")

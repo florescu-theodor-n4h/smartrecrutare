@@ -5,6 +5,7 @@ import com.samplus.smartrecrutare.employer.dto.EmployerResponse;
 import com.samplus.smartrecrutare.employer.dto.EmployerUpdateRequest;
 import com.samplus.smartrecrutare.employer.service.EmployerService;
 import com.samplus.smartrecrutare.models.PaginaModel;
+import com.samplus.smartrecrutare.security.RoluriAplicatie;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -17,6 +18,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -54,6 +56,7 @@ public class EmployerController {
             @ApiResponse(responseCode = "409", description = "Cod fiscal duplicat")
     })
     @PostMapping
+    @PreAuthorize(RoluriAplicatie.ADMIN_OR_MANAGER)
     public ResponseEntity<EmployerResponse> create(@Valid @RequestBody EmployerCreateRequest request) {
         EmployerResponse response = employerService.create(request);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
@@ -65,6 +68,7 @@ public class EmployerController {
 
     @Operation(summary = "Listeaza angajatorii")
     @GetMapping
+    @PreAuthorize(RoluriAplicatie.BUSINESS_READ)
     public ResponseEntity<PaginaModel<EmployerResponse>> list(
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
@@ -79,6 +83,7 @@ public class EmployerController {
             @ApiResponse(responseCode = "404", description = "Angajator inexistent")
     })
     @GetMapping("/{id}")
+    @PreAuthorize(RoluriAplicatie.BUSINESS_READ)
     public ResponseEntity<EmployerResponse> getById(@PathVariable Long id) {
         return ResponseEntity.ok(employerService.getById(id));
     }
@@ -92,6 +97,7 @@ public class EmployerController {
             @ApiResponse(responseCode = "409", description = "Cod fiscal duplicat")
     })
     @PutMapping("/{id}")
+    @PreAuthorize(RoluriAplicatie.ADMIN_OR_MANAGER)
     public ResponseEntity<EmployerResponse> update(
             @PathVariable Long id,
             @Valid @RequestBody EmployerUpdateRequest request
@@ -106,6 +112,7 @@ public class EmployerController {
             @ApiResponse(responseCode = "409", description = "Angajator folosit de joburi")
     })
     @DeleteMapping("/{id}")
+    @PreAuthorize(RoluriAplicatie.ADMIN)
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         employerService.delete(id);
         return ResponseEntity.noContent().build();

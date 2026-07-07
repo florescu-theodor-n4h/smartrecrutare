@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @Validated
 @RequestMapping("/api/admin/analytics")
-@PreAuthorize(RoluriAnalitice.ADMIN)
+@PreAuthorize(RoluriAnalitice.CITIRE_ADMINISTRATIVA)
 @SecurityRequirement(name = "bearerAuth")
 @Tag(name = "Rezultate analitice", description = "Rezultate paginate si indicatori pentru administrare")
 public class ControllerRezultateAnalitice {

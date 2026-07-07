@@ -33,7 +33,6 @@ import java.net.URI;
 @RestController
 @Validated
 @RequestMapping("/api/admin/analytics/notifications")
-@PreAuthorize(RoluriAnalitice.ADMIN)
 @SecurityRequirement(name = "bearerAuth")
 @Tag(name = "Administrare notificari", description = "Publicare prin chei de traducere, fara text hardcodat intr-o limba")
 public class ControllerAdministrareNotificari {
@@ -48,6 +47,7 @@ public class ControllerAdministrareNotificari {
     @ApiResponse(responseCode = "200", description = "Pagina de notificari",
             content = @Content(schema = @Schema(implementation = PaginaModel.class)))
     @GetMapping
+    @PreAuthorize(RoluriAnalitice.CITIRE_ADMINISTRATIVA)
     public ResponseEntity<PaginaModel<NotificareResponse>> listare(
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
@@ -65,6 +65,7 @@ public class ControllerAdministrareNotificari {
             @ApiResponse(responseCode = "400", description = "Identificator sau substituenti invalizi")
     })
     @PostMapping
+    @PreAuthorize(RoluriAnalitice.ADMIN)
     public ResponseEntity<NotificareResponse> publicare(
             @Valid @RequestBody PublicareNotificareRequest request
     ) {
