@@ -1,6 +1,6 @@
 # Backend Architecture
 
-SmartRecrutare is a Spring Boot backend using REST controllers, DTOs, service-layer transactions, JPA repositories, OAuth2/JWT security, and OpenAPI annotations.
+SmartRecrutare is a Spring Boot backend using REST controllers, DTOs, service-layer transactions, JPA repositories, OAuth2/JWT security, LocalAuth JWT support, and OpenAPI annotations.
 
 ## System Diagram
 
@@ -13,6 +13,7 @@ flowchart TB
 
     subgraph EdgeLayer[Application Edge]
         Auth[Authentication Flow]
+        LocalAuth[LocalAuth Login]
         Security[Spring Security Filter Chain]
         OpenAPI[OpenAPI Documentation]
     end
@@ -27,12 +28,13 @@ flowchart TB
         JobService[Job Service]
         EmployerService[Employer Service]
         RolePolicy[Role / Permission Policy]
+        LocalAuthService[LocalAuth Service]
     end
 
     subgraph PersistenceLayer[Persistence Layer]
         JobRepository[Job Repository]
         EmployerRepository[Employer Repository]
-        UserRepository[User / Role Repository]
+        LocalUserRepository[Local User Repository]
     end
 
     subgraph DataLayer[Data Layer]
@@ -40,23 +42,27 @@ flowchart TB
     end
 
     Web --> Auth
+    Web --> LocalAuth
     Swagger --> Security
     Auth --> Security
+    LocalAuth --> Security
     Security --> JobController
     Security --> EmployerController
     Security --> AdminController
     JobController --> JobService
     EmployerController --> EmployerService
     AdminController --> RolePolicy
+    LocalAuth --> LocalAuthService
     JobService --> JobRepository
     EmployerService --> EmployerRepository
-    RolePolicy --> UserRepository
+    RolePolicy --> LocalUserRepository
+    LocalAuthService --> LocalUserRepository
     JobRepository --> Database
     EmployerRepository --> Database
-    UserRepository --> Database
+    LocalUserRepository --> Database
 ```
 
-`UserRepository` is shown as a future/identity-provider integration boundary. The current backend does not define local user or role persistence.
+Auth0 remains the cloud identity-provider path. LocalAuth is a database-backed path for non-cloud users and shares the same Spring authority model after JWT validation.
 
 ## Layer Responsibilities
 
@@ -83,6 +89,14 @@ Security:
 - Enforces public/private route boundaries in `SecurityFilterChain`.
 - Enforces business permissions through `@PreAuthorize`.
 - Converts JWT roles to internal Spring authorities.
+- Routes JWT decoding between Auth0 and LocalAuth by token issuer.
+
+LocalAuth:
+
+- Stores only BCrypt password hashes.
+- Issues short-lived local JWT bearer tokens when explicitly enabled.
+- Keeps local user management under admin-only endpoints.
+- Applies employer ownership checks for local managers.
 
 ## Employer and Job Workflow
 
@@ -102,18 +116,39 @@ flowchart LR
     Guest[Guest / User] -->|GET /api/jobs/active| JobController
 ```
 
+## LocalAuth Workflow
+
+```mermaid
+sequenceDiagram
+    participant Admin as Admin
+    participant LocalAuthApi as LocalAuth Admin API
+    participant LocalAuth as LocalAuth Service
+    participant Repo as LocalUserRepository
+    participant Security as Spring Security
+    participant DB as Database
+
+    Admin->>LocalAuthApi: POST /api/admin/local-users
+    LocalAuthApi->>LocalAuth: create local user
+    LocalAuth->>LocalAuth: BCrypt password hashing
+    LocalAuth->>Repo: save user and roles
+    Repo->>DB: insert local user rows
+    Admin->>Security: POST /auth/local/login
+    Security->>LocalAuth: validate credentials
+    LocalAuth->>Security: signed local JWT
+```
+
 ## Hardening Decisions
 
 - Public browsing is limited to active job listings.
 - Administrative employer and job reads require elevated read roles.
 - Job and employer writes require admin or manager.
+- Local managers can manage only assigned employers and jobs for those employers.
 - Deletes are admin-only.
 - Safe analytics reads are available to admin, auditor, and governmental users.
 - No local production user seeding was added.
 
 ## Deferred Improvements
 
-- Fine-grained manager ownership by assigned employer is not implemented because no ownership model exists yet.
-- Local user/role management is not implemented because the project currently delegates identity to Auth0/OAuth2.
 - Soft delete is not implemented because the current audit base does not define deletion state.
 - Database migrations are still deferred because the project currently uses Hibernate auto DDL.
+- Refresh tokens and account lockout counters are not implemented yet; LocalAuth currently issues access tokens only and supports manual locked/enabled flags.
