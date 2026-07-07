@@ -1,5 +1,8 @@
 package com.samplus.smartrecrutare;
 
+import com.samplus.smartrecrutare.job.dto.JobCreateRequest;
+import com.samplus.smartrecrutare.job.dto.JobResponse;
+import com.samplus.smartrecrutare.job.dto.JobUpdateRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -7,207 +10,125 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.persistence.EntityNotFoundException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Collection;
+import java.util.List;
 
-/**
- * Controller REST thin pentru resursa {@code /api/jobs}.
- *
- * <p>Acoperă exact suprafața de API consumată de frontend-ul TypeScript:</p>
- * <pre>
- *   GET    /api/jobs         → getJobs()
- *   GET    /api/jobs/{id}    → getJob(id)
- *   POST   /api/jobs         → createJob(payload)
- *   PUT    /api/jobs/{id}    → updateJob(id, payload)
- *   DELETE /api/jobs/{id}    → deleteJob(id)
- * </pre>
- *
- * <p>Controllerul nu conține logică de business. Toată logica este delegată
- * către {@link ServiciuJoburi}. Responsabilitatea sa este exclusiv traducerea
- * HTTP ↔ Java: mapping-uri, status codes, excepții → răspunsuri HTTP.</p>
- */
 @RestController
+@Validated
 @RequestMapping("/api/jobs")
-@CrossOrigin(origins = "*") // DEV only — restrict în producție cu origini explicite
-@Tag(name = "Joburi", description = "CRUD complet pentru posturile de muncă disponibile")
+@CrossOrigin(origins = "*")
+@SecurityRequirement(name = "bearerAuth")
+@Tag(name = "Joburi", description = "CRUD pentru posturile de munca disponibile")
 public class ControllerJoburi {
-    private static final Logger log = LoggerFactory.getLogger(ControllerJoburi.class);
+
     private final ServiciuJoburi serviciuJoburi;
 
     public ControllerJoburi(ServiciuJoburi serviciuJoburi) {
         this.serviciuJoburi = serviciuJoburi;
     }
 
-    // -------------------------------------------------------------------------
-    // GET /api/jobs
-    // -------------------------------------------------------------------------
-
-    @Operation(
-            summary = "Obține toate joburile",
-            description = "Returnează lista completă a joburilor (active și inactive)."
-    )
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Listă joburi returnată cu succes",
-                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = Job.class))))
-    })
+    @Operation(summary = "Obtine toate joburile")
+    @ApiResponse(responseCode = "200", description = "Lista joburi",
+            content = @Content(array = @ArraySchema(schema = @Schema(implementation = JobResponse.class))))
     @GetMapping
-    public ResponseEntity<Collection<Job>> getJobs() {
-        Collection<Job> joburi = serviciuJoburi.getTateJoburile();
-        return ResponseEntity.ok(joburi);
+    public ResponseEntity<Collection<JobResponse>> getJobs() {
+        return ResponseEntity.ok(serviciuJoburi.getToateJoburileDto());
     }
 
-    // -------------------------------------------------------------------------
-    // GET /api/jobs/{id}
-    // -------------------------------------------------------------------------
-
-    @Operation(
-            summary = "Obține un job după ID",
-            description = "Returnează jobul cu id-ul specificat sau 404 dacă nu există."
-    )
+    @Operation(summary = "Obtine un job dupa ID")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Job găsit",
-                    content = @Content(schema = @Schema(implementation = Job.class))),
-            @ApiResponse(responseCode = "404", description = "Job inexistent"),
-            @ApiResponse(responseCode = "400", description = "ID invalid")
+            @ApiResponse(responseCode = "200", description = "Job gasit",
+                    content = @Content(schema = @Schema(implementation = JobResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Job inexistent")
     })
     @GetMapping("/{id}")
-    public ResponseEntity<Job> getJob(
+    public ResponseEntity<JobResponse> getJob(
             @Parameter(description = "ID-ul jobului", required = true)
-            @PathVariable Long id) {
-
-        return serviciuJoburi.gasireById(id)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> {
-                    log.warn("Job inexistent la GET: id={}", id);
-                    return ResponseEntity.notFound().build();
-                });
+            @PathVariable Long id
+    ) {
+        return ResponseEntity.ok(serviciuJoburi.gasireDto(id));
     }
 
-    // -------------------------------------------------------------------------
-    // POST /api/jobs
-    // -------------------------------------------------------------------------
-
     @Operation(
-            summary = "Creează un job nou",
-            description = "Adaugă un post de muncă nou în sistem. Id-ul din body este ignorat — " +
-                    "va fi generat automat. Câmpurile obligatorii: titlu, companie."
+            summary = "Creeaza un job nou",
+            description = "Creeaza un job si il leaga de angajatorul existent indicat prin employerId."
     )
     @ApiResponses({
-            @ApiResponse(responseCode = "201", description = "Job creat cu succes",
-                    content = @Content(schema = @Schema(implementation = Job.class))),
-            @ApiResponse(responseCode = "400", description = "Date invalide (titlu sau companie lipsă)")
+            @ApiResponse(responseCode = "201", description = "Job creat",
+                    content = @Content(schema = @Schema(implementation = JobResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Date invalide"),
+            @ApiResponse(responseCode = "404", description = "Angajator inexistent")
     })
     @PostMapping
-    public ResponseEntity<?> createJob(@RequestBody Job payload) {
-        try {
-            Job salvat = serviciuJoburi.creare(payload);
-            return ResponseEntity.status(HttpStatus.CREATED).body(salvat);
-        } catch (IllegalArgumentException e) {
-            log.warn("Creare job esuata — date invalide: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    public ResponseEntity<JobResponse> createJob(@Valid @RequestBody JobCreateRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(serviciuJoburi.creareDinRequest(request));
     }
 
-    // -------------------------------------------------------------------------
-    // PUT /api/jobs/{id}
-    // -------------------------------------------------------------------------
-
     @Operation(
-            summary = "Actualizează un job existent",
-            description = "Actualizează parțial câmpurile jobului identificat prin id. " +
-                    "Câmpurile null din payload sunt ignorate (nu suprascriu datele existente). " +
-                    "Câmpurile de audit și id-ul nu pot fi modificate."
+            summary = "Inlocuieste un job existent",
+            description = "Inlocuieste campurile publicabile ale jobului si poate schimba angajatorul asociat."
     )
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Job actualizat cu succes",
-                    content = @Content(schema = @Schema(implementation = Job.class))),
-            @ApiResponse(responseCode = "404", description = "Job inexistent"),
-            @ApiResponse(responseCode = "400", description = "Date invalide sau ID null")
+            @ApiResponse(responseCode = "200", description = "Job actualizat",
+                    content = @Content(schema = @Schema(implementation = JobResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Date invalide"),
+            @ApiResponse(responseCode = "404", description = "Job sau angajator inexistent")
     })
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateJob(
+    public ResponseEntity<JobResponse> updateJob(
             @Parameter(description = "ID-ul jobului de actualizat", required = true)
             @PathVariable Long id,
-            @RequestBody Job payload) {
-
-        try {
-            Job actualizat = serviciuJoburi.actualizare(id, payload);
-            return ResponseEntity.ok(actualizat);
-        } catch (EntityNotFoundException e) {
-            log.warn("Actualizare job esuata — inexistent: id={}", id);
-            return ResponseEntity.notFound().build();
-        } catch (IllegalArgumentException e) {
-            log.warn("Actualizare job esuata — date invalide: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+            @Valid @RequestBody JobUpdateRequest request
+    ) {
+        return ResponseEntity.ok(serviciuJoburi.inlocuire(id, request));
     }
 
-    // -------------------------------------------------------------------------
-    // DELETE /api/jobs/{id}
-    // -------------------------------------------------------------------------
-
-    @Operation(
-            summary = "Șterge un job după ID",
-            description = "Returnează true dacă jobul a fost găsit și șters, false dacă nu există. " +
-                    "Operația este idempotentă — nu aruncă eroare dacă jobul lipsește."
-    )
+    @Operation(summary = "Sterge un job dupa ID")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Rezultatul operației (true/false)"),
+            @ApiResponse(responseCode = "200", description = "Rezultatul operatiei true/false"),
             @ApiResponse(responseCode = "400", description = "ID invalid")
     })
     @DeleteMapping("/{id}")
     public ResponseEntity<Boolean> deleteJob(
-            @Parameter(description = "ID-ul jobului de șters", required = true)
-            @PathVariable Long id) {
-
-        boolean sters = serviciuJoburi.stergere(id);
-        return ResponseEntity.ok(sters);
+            @Parameter(description = "ID-ul jobului de sters", required = true)
+            @PathVariable Long id
+    ) {
+        return ResponseEntity.ok(serviciuJoburi.stergere(id));
     }
 
-    // -------------------------------------------------------------------------
-    // GET /api/jobs/active  (endpoint bonus — util pentru frontend)
-    // -------------------------------------------------------------------------
-
-    @Operation(
-            summary = "Obține toate joburile active",
-            description = "Shortcut pentru listarea exclusivă a joburilor cu activ=true."
-    )
-    @ApiResponse(responseCode = "200", description = "Listă joburi active",
-            content = @Content(array = @ArraySchema(schema = @Schema(implementation = Job.class))))
+    @Operation(summary = "Obtine toate joburile active")
+    @ApiResponse(responseCode = "200", description = "Lista joburi active",
+            content = @Content(array = @ArraySchema(schema = @Schema(implementation = JobResponse.class))))
     @GetMapping("/active")
-    public ResponseEntity<Collection<Job>> getJoburiActive() {
-        return ResponseEntity.ok(serviciuJoburi.getJoburiActive());
+    public ResponseEntity<List<JobResponse>> getJoburiActive() {
+        return ResponseEntity.ok(serviciuJoburi.getJoburiActiveDto());
     }
 
-    // -------------------------------------------------------------------------
-    // GET /api/jobs/cauta?titlu=...  (endpoint bonus — util pentru search)
-    // -------------------------------------------------------------------------
-
-    @Operation(
-            summary = "Caută joburi după titlu",
-            description = "Returnează joburile al căror titlu conține fragmentul dat (case-insensitive)."
-    )
+    @Operation(summary = "Cauta joburi dupa titlu")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Rezultate căutare",
-                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = Job.class)))),
-            @ApiResponse(responseCode = "400", description = "Parametrul titlu lipsește sau este gol")
+            @ApiResponse(responseCode = "200", description = "Rezultate cautare",
+                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = JobResponse.class)))),
+            @ApiResponse(responseCode = "400", description = "Parametrul titlu lipseste sau este gol")
     })
     @GetMapping("/cauta")
-    public ResponseEntity<?> cautaDupaTitlu(
-            @Parameter(description = "Fragment de text căutat în titlul jobului", required = true)
-            @RequestParam String titlu) {
-
-        try {
-            return ResponseEntity.ok(serviciuJoburi.cautareDupaTitlu(titlu));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    public ResponseEntity<List<JobResponse>> cautaDupaTitlu(@RequestParam String titlu) {
+        return ResponseEntity.ok(serviciuJoburi.cautareDupaTitluDto(titlu));
     }
 }

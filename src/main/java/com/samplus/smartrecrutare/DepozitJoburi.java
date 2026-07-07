@@ -67,4 +67,6 @@ public interface DepozitJoburi extends JpaRepository<Job, Long> {
      * @return numărul total de joburi cu {@code activ = true}
      */
     long countByActivTrue();
+
+    boolean existsByEmployerId(Long employerId);
 }

@@ -1,91 +1,65 @@
 package com.samplus.smartrecrutare;
 
+import com.samplus.smartrecrutare.employer.domain.Employer;
+import com.samplus.smartrecrutare.employer.exception.EmployerNotFoundException;
+import com.samplus.smartrecrutare.employer.repository.EmployerRepository;
+import com.samplus.smartrecrutare.job.dto.JobCreateRequest;
+import com.samplus.smartrecrutare.job.dto.JobResponse;
+import com.samplus.smartrecrutare.job.dto.JobUpdateRequest;
+import com.samplus.smartrecrutare.job.mapper.JobMapper;
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
-/**
- * Serviciu atomic enterprise pentru gestionarea joburilor.
- *
- * <p>Toate operațiile de scriere sunt tranzacționale și atomice: fie se execută
- * complet, fie se rollback în caz de eroare necontrolată. Logica de business
- * este complet izolată de stratul HTTP (controller) și de stratul de date
- * (repository), respectând principiul Single Responsibility.</p>
- *
- * <p>Convenții aplicare consistentă cu {@code ServiciuCandidat}:</p>
- * <ul>
- *   <li>Crearea forțează {@code id = null} pentru a preveni merge-ul accidental.</li>
- *   <li>Ștergerea returnează {@code false} dacă entitatea nu există (idempotentă, no-throw).</li>
- *   <li>Actualizarea aruncă {@link EntityNotFoundException} dacă id-ul lipsește.</li>
- *   <li>Interogările folosesc {@code TxType.SUPPORTS} — participă în tranzacție existentă,
- *       dar nu creează una nouă dacă nu există.</li>
- * </ul>
- */
 @Service
 public class ServiciuJoburi {
     private static final Logger log = LoggerFactory.getLogger(ServiciuJoburi.class);
-    private final DepozitJoburi depozitJoburi;
 
-    public ServiciuJoburi(DepozitJoburi depozitJoburi) {
+    private final DepozitJoburi depozitJoburi;
+    private final EmployerRepository employerRepository;
+    private final JobMapper jobMapper;
+
+    public ServiciuJoburi(
+            DepozitJoburi depozitJoburi,
+            EmployerRepository employerRepository,
+            JobMapper jobMapper
+    ) {
         this.depozitJoburi = depozitJoburi;
+        this.employerRepository = employerRepository;
+        this.jobMapper = jobMapper;
     }
 
-    // -------------------------------------------------------------------------
-    // CREARE
-    // -------------------------------------------------------------------------
-
-    /**
-     * Creează un job nou în baza de date.
-     *
-     * <p>Id-ul este resetat la {@code null} indiferent de ce trimite clientul,
-     * pentru a forța un INSERT și a evita merge-ul accidental al unei entități existente.
-     * Câmpurile de audit ({@code creatLa}, {@code actualizatLa}) sunt setate automat
-     * prin {@code @PrePersist} pe entitate.</p>
-     *
-     * @param job datele jobului de creat
-     * @return entitatea persistată cu id-ul generat și timestamps de audit populate
-     * @throws IllegalArgumentException dacă {@code job} este null
-     * @throws IllegalArgumentException dacă {@code titlu} sau {@code companie} lipsesc
-     */
     @Transactional
     public Job creare(Job job) {
         if (job == null) {
             throw new IllegalArgumentException("Job-ul nu poate fi null");
         }
         validareObligatorie(job);
+        job.setId(null);
+        if (job.getEmployer() != null && (job.getCompanie() == null || job.getCompanie().isBlank())) {
+            job.setCompanie(job.getEmployer().getNume());
+        }
 
-        job.setId(null); // Forțăm INSERT, nu UPDATE/merge accidental
-
-        log.info("Creare job: titlu='{}' companie='{}'", job.getTitlu(), job.getCompanie());
-        Job salvat = depozitJoburi.save(job);
-        log.info("Job creat cu succes: id={}", salvat.getId());
-
-        return salvat;
+        log.info("Creare job legacy: titlu='{}' companie='{}'", job.getTitlu(), job.getCompanie());
+        return depozitJoburi.save(job);
     }
 
-    // -------------------------------------------------------------------------
-    // ACTUALIZARE
-    // -------------------------------------------------------------------------
+    @Transactional
+    public JobResponse creareDinRequest(JobCreateRequest request) {
+        Employer employer = findEmployer(request.getEmployerId());
+        Job job = jobMapper.toEntity(request, employer);
+        Job salvat = depozitJoburi.saveAndFlush(job);
+        log.info("Job creat cu angajator: id={} employerId={}", salvat.getId(), employer.getId());
+        return jobMapper.toResponse(salvat);
+    }
 
-    /**
-     * Actualizează un job existent (update parțial — doar câmpurile non-null din DTO).
-     *
-     * <p>Câmpurile de audit ({@code creatLa}, {@code actualizatLa}) și id-ul nu sunt
-     * niciodată suprascrise din DTO. {@code actualizatLa} este refreshed automat
-     * prin {@code @PreUpdate} pe entitate.</p>
-     *
-     * @param id  identificatorul jobului de actualizat
-     * @param dto obiect cu noile valori (câmpurile null sunt ignorate)
-     * @return entitatea actualizată și persistată
-     * @throws EntityNotFoundException  dacă nu există niciun job cu {@code id}-ul dat
-     * @throws IllegalArgumentException dacă {@code id} sau {@code dto} sunt null
-     */
     @Transactional
     public Job actualizare(Long id, Job dto) {
         if (id == null) {
@@ -95,150 +69,145 @@ public class ServiciuJoburi {
             throw new IllegalArgumentException("DTO-ul jobului nu poate fi null");
         }
 
-        log.info("Actualizare job: id={}", id);
-
-        Job existent = depozitJoburi.findById(id)
-                .orElseThrow(() -> {
-                    log.error("Job inexistent la actualizare: id={}", id);
-                    return new EntityNotFoundException("Job inexistent cu id=" + id);
-                });
-
-        // Actualizare parțială — câmpurile null din DTO nu suprascriu datele existente
-        if (dto.getTitlu() != null)       existent.setTitlu(dto.getTitlu());
-        if (dto.getDescriere() != null)   existent.setDescriere(dto.getDescriere());
-        if (dto.getCompanie() != null)    existent.setCompanie(dto.getCompanie());
-        if (dto.getLocatie() != null)     existent.setLocatie(dto.getLocatie());
-        if (dto.getSalariu() != null)     existent.setSalariu(dto.getSalariu());
-        if (dto.getTipContract() != null) existent.setTipContract(dto.getTipContract());
-        // activ este boolean primitiv — îl actualizăm întotdeauna dacă DTO-ul e prezent
+        Job existent = gasesteEntitate(id);
+        if (dto.getTitlu() != null) {
+            existent.setTitlu(dto.getTitlu());
+        }
+        if (dto.getDescriere() != null) {
+            existent.setDescriere(dto.getDescriere());
+        }
+        if (dto.getCompanie() != null) {
+            existent.setCompanie(dto.getCompanie());
+        }
+        if (dto.getEmployer() != null) {
+            existent.setEmployer(dto.getEmployer());
+            if (dto.getCompanie() == null || dto.getCompanie().isBlank()) {
+                existent.setCompanie(dto.getEmployer().getNume());
+            }
+        }
+        if (dto.getLocatie() != null) {
+            existent.setLocatie(dto.getLocatie());
+        }
+        if (dto.getSalariu() != null) {
+            existent.setSalariu(dto.getSalariu());
+        }
+        if (dto.getTipContract() != null) {
+            existent.setTipContract(dto.getTipContract());
+        }
         existent.setActiv(dto.isActiv());
 
-        Job actualizat = depozitJoburi.save(existent);
-        log.info("Job actualizat cu succes: id={} titlu='{}'", actualizat.getId(), actualizat.getTitlu());
-
-        return actualizat;
+        return depozitJoburi.save(existent);
     }
 
-    // -------------------------------------------------------------------------
-    // STERGERE
-    // -------------------------------------------------------------------------
+    @Transactional
+    public JobResponse inlocuire(Long id, JobUpdateRequest request) {
+        Job existent = gasesteEntitate(id);
+        Employer employer = findEmployer(request.getEmployerId());
+        jobMapper.replace(existent, request, employer);
+        depozitJoburi.flush();
+        return jobMapper.toResponse(existent);
+    }
 
-    /**
-     * Șterge un job după id.
-     *
-     * <p>Dacă nu există niciun job cu id-ul dat, returnează {@code false} fără a
-     * arunca excepție — comportament deliberat pentru idempotență (DELETE idempotent).</p>
-     *
-     * @param id identificatorul unic al jobului
-     * @return {@code true} dacă a fost găsit și șters, {@code false} altfel
-     * @throws IllegalArgumentException dacă {@code id} este null
-     */
     @Transactional
     public boolean stergere(Long id) {
         if (id == null) {
             throw new IllegalArgumentException("id-ul nu poate fi null");
         }
-
         if (!depozitJoburi.existsById(id)) {
-            log.warn("Stergere ignorata — job inexistent: id={}", id);
+            log.warn("Stergere ignorata - job inexistent: id={}", id);
             return false;
         }
-
         depozitJoburi.deleteById(id);
         log.info("Job sters: id={}", id);
         return true;
     }
 
-    // -------------------------------------------------------------------------
-    // INTEROGARI (read-only)
-    // -------------------------------------------------------------------------
-
-    /**
-     * Returnează toate joburile din baza de date (active și inactive).
-     *
-     * <p>Durata query-ului și numărul de rezultate sunt logați pentru monitorizare.</p>
-     *
-     * @return colecție (posibil goală) cu toate joburile
-     */
-    @Transactional(value = Transactional.TxType.SUPPORTS)
+    @Transactional(readOnly = true)
     public Collection<Job> getTateJoburile() {
-        final long start = System.currentTimeMillis();
-
         List<Job> joburi = depozitJoburi.findAll();
-
-        final long durata = System.currentTimeMillis() - start;
-        log.info("GetToateJoburile t={}ms count={}", durata, joburi.size());
-
+        log.info("GetToateJoburile count={}", joburi.size());
         return joburi;
     }
 
-    /**
-     * Caută un job după id.
-     *
-     * @param id identificatorul jobului
-     * @return {@link Optional} cu jobul găsit, sau gol dacă nu există
-     * @throws IllegalArgumentException dacă {@code id} este null
-     */
-    @Transactional(value = Transactional.TxType.SUPPORTS)
+    @Transactional(readOnly = true)
+    public Collection<JobResponse> getToateJoburileDto() {
+        return depozitJoburi.findAll().stream()
+                .map(jobMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public Optional<Job> gasireById(Long id) {
         if (id == null) {
             throw new IllegalArgumentException("id-ul nu poate fi null");
         }
-
-        log.debug("Cautare job: id={}", id);
         return depozitJoburi.findById(id);
     }
 
-    /**
-     * Returnează toate joburile cu {@code activ = true}.
-     *
-     * @return lista joburilor active, posibil goală
-     */
-    @Transactional(value = Transactional.TxType.SUPPORTS)
+    @Transactional(readOnly = true)
+    public JobResponse gasireDto(Long id) {
+        return jobMapper.toResponse(gasesteEntitate(id));
+    }
+
+    @Transactional(readOnly = true)
     public List<Job> getJoburiActive() {
-        final long start = System.currentTimeMillis();
-
         List<Job> joburi = depozitJoburi.findByActivTrue();
-
-        final long durata = System.currentTimeMillis() - start;
-        log.info("GetJoburiActive t={}ms count={}", durata, joburi.size());
-
+        log.info("GetJoburiActive count={}", joburi.size());
         return joburi;
     }
 
-    /**
-     * Caută joburi al căror titlu conține fragmentul dat (case-insensitive).
-     *
-     * @param fragment textul de căutat în titlu
-     * @return lista joburilor găsite, posibil goală
-     * @throws IllegalArgumentException dacă {@code fragment} este null sau gol
-     */
-    @Transactional(value = Transactional.TxType.SUPPORTS)
-    public List<Job> cautareDupaTitlu(String fragment) {
-        if (fragment == null || fragment.isBlank()) {
-            throw new IllegalArgumentException("Fragmentul de căutare nu poate fi null/gol");
-        }
+    @Transactional(readOnly = true)
+    public List<JobResponse> getJoburiActiveDto() {
+        return depozitJoburi.findByActivTrue().stream()
+                .map(jobMapper::toResponse)
+                .collect(Collectors.toList());
+    }
 
-        log.debug("Cautare joburi dupa titlu: fragment='{}'", fragment);
+    @Transactional(readOnly = true)
+    public List<Job> cautareDupaTitlu(String fragment) {
+        validareFragment(fragment);
         return depozitJoburi.findByTitluContainingIgnoreCase(fragment);
     }
 
-    // -------------------------------------------------------------------------
-    // Validare internă
-    // -------------------------------------------------------------------------
+    @Transactional(readOnly = true)
+    public List<JobResponse> cautareDupaTitluDto(String fragment) {
+        validareFragment(fragment);
+        return depozitJoburi.findByTitluContainingIgnoreCase(fragment).stream()
+                .map(jobMapper::toResponse)
+                .collect(Collectors.toList());
+    }
 
-    /**
-     * Validează câmpurile obligatorii ale unui job înainte de persistare.
-     *
-     * @param job entitatea de validat
-     * @throws IllegalArgumentException dacă titlul sau compania lipsesc/sunt goale
-     */
+    private Job gasesteEntitate(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id-ul nu poate fi null");
+        }
+        return depozitJoburi.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Job inexistent cu id=" + id));
+    }
+
+    private Employer findEmployer(Long employerId) {
+        if (employerId == null) {
+            throw new IllegalArgumentException("employerId nu poate fi null");
+        }
+        return employerRepository.findById(employerId)
+                .orElseThrow(() -> new EmployerNotFoundException(employerId));
+    }
+
     private void validareObligatorie(Job job) {
         if (job.getTitlu() == null || job.getTitlu().isBlank()) {
             throw new IllegalArgumentException("Titlul jobului este obligatoriu");
         }
         if (job.getCompanie() == null || job.getCompanie().isBlank()) {
             throw new IllegalArgumentException("Compania jobului este obligatorie");
+        }
+        if (job.getTipContract() == null || job.getTipContract().isBlank()) {
+            throw new IllegalArgumentException("Tipul contractului este obligatoriu");
+        }
+    }
+
+    private void validareFragment(String fragment) {
+        if (fragment == null || fragment.isBlank()) {
+            throw new IllegalArgumentException("Fragmentul de cautare nu poate fi null/gol");
         }
     }
 }
