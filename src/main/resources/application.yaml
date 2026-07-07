@@ -55,3 +55,9 @@ auth0:
     key-id: YOUR_AUTH0_JAR_KEY_ID
     private-key-location: classpath:local-secrets/auth0-jar-private-key.pem
     public-key-location: classpath:local-secrets/auth0-jar-public-key.pem
+
+local-auth:
+  enabled: ${LOCAL_AUTH_ENABLED:false}
+  issuer: ${LOCAL_AUTH_ISSUER:smartrecrutare-local}
+  secret: ${LOCAL_AUTH_JWT_SECRET:}
+  access-token-minutes: ${LOCAL_AUTH_ACCESS_TOKEN_MINUTES:60}

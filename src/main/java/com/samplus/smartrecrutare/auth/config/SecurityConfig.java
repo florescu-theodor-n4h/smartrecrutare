@@ -1,8 +1,12 @@
 package com.samplus.smartrecrutare.auth.config;
 
+import com.samplus.smartrecrutare.localauth.config.LocalAuthProperties;
+import com.samplus.smartrecrutare.localauth.security.SmartRecrutareJwtDecoder;
+import com.samplus.smartrecrutare.localauth.service.LocalAuthTokenService;
 import com.samplus.smartrecrutare.security.RbacJwtAuthenticationConverter;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,6 +20,9 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.CsrfConfigurer;
 import org.springframework.security.config.annotation.web.configurers.SessionManagementConfigurer;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.cors.CorsConfiguration;
@@ -28,7 +35,7 @@ import java.util.Arrays;
 import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
 
 @Configuration
-@EnableConfigurationProperties(Auth0Props.class)
+@EnableConfigurationProperties({Auth0Props.class, LocalAuthProperties.class})
 @EnableWebSecurity
 @EnableMethodSecurity
         (
@@ -71,6 +78,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/jobs/active").permitAll()
                         .requestMatchers("/auth/login", "/auth/callback", "/auth/me").permitAll()
+                        .requestMatchers("/auth/local/login").permitAll()
+                        .requestMatchers("/auth/local/me").authenticated()
                         .requestMatchers("/public/**").permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .requestMatchers("/bot/**").authenticated()
@@ -86,6 +95,20 @@ public class SecurityConfig {
     @Bean
     RbacJwtAuthenticationConverter rbacJwtAuthenticationConverter() {
         return new RbacJwtAuthenticationConverter();
+    }
+
+    @Bean
+    PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder(12);
+    }
+
+    @Bean
+    JwtDecoder smartRecrutareJwtDecoder(
+            @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri:}") String auth0Issuer,
+            LocalAuthProperties localAuthProperties,
+            LocalAuthTokenService localAuthTokenService
+    ) {
+        return new SmartRecrutareJwtDecoder(auth0Issuer, localAuthProperties, localAuthTokenService);
     }
     @Bean
     @Qualifier("secureRestClient")

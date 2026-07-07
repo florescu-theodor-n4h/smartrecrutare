@@ -3,6 +3,10 @@ package com.samplus.smartrecrutare;
 import com.samplus.smartrecrutare.employer.exception.DuplicateFiscalCodeException;
 import com.samplus.smartrecrutare.employer.exception.EmployerInUseException;
 import com.samplus.smartrecrutare.employer.exception.EmployerNotFoundException;
+import com.samplus.smartrecrutare.localauth.exception.LocalAuthBadCredentialsException;
+import com.samplus.smartrecrutare.localauth.exception.LocalAuthConflictException;
+import com.samplus.smartrecrutare.localauth.exception.LocalAuthDisabledException;
+import com.samplus.smartrecrutare.localauth.exception.LocalAuthNotFoundException;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
@@ -29,18 +33,29 @@ public class HandlerExceptiiGlobal {
         return problema(HttpStatus.NOT_FOUND, "Ruta inexistenta", "Endpointul solicitat nu exista");
     }
 
-    @ExceptionHandler({EmployerNotFoundException.class, EntityNotFoundException.class})
+    @ExceptionHandler({EmployerNotFoundException.class, LocalAuthNotFoundException.class, EntityNotFoundException.class})
     ProblemDetail notFound(RuntimeException exception) {
         return problema(HttpStatus.NOT_FOUND, "Resursa inexistenta", exception.getMessage());
     }
 
     @ExceptionHandler({
             DuplicateFiscalCodeException.class,
+            LocalAuthConflictException.class,
             EmployerInUseException.class,
             DataIntegrityViolationException.class
     })
     ProblemDetail conflict(RuntimeException exception) {
         return problema(HttpStatus.CONFLICT, "Conflict de date", exception.getMessage());
+    }
+
+    @ExceptionHandler(LocalAuthBadCredentialsException.class)
+    ProblemDetail badLocalCredentials(LocalAuthBadCredentialsException exception) {
+        return problema(HttpStatus.UNAUTHORIZED, "Credentiale invalide", exception.getMessage());
+    }
+
+    @ExceptionHandler(LocalAuthDisabledException.class)
+    ProblemDetail localAuthDisabled(LocalAuthDisabledException exception) {
+        return problema(HttpStatus.SERVICE_UNAVAILABLE, "LocalAuth indisponibil", exception.getMessage());
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

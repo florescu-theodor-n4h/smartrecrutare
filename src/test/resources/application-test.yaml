@@ -12,3 +12,9 @@ spring:
       hibernate:
         default_schema: PUBLIC
     show-sql: false
+
+local-auth:
+  enabled: true
+  issuer: smartrecrutare-local-test
+  secret: test-local-auth-secret-32-characters-minimum
+  access-token-minutes: 30
