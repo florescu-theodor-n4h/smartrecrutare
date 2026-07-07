@@ -11,6 +11,7 @@ import com.samplus.smartrecrutare.employer.exception.EmployerInUseException;
 import com.samplus.smartrecrutare.employer.exception.EmployerNotFoundException;
 import com.samplus.smartrecrutare.employer.mapper.EmployerMapper;
 import com.samplus.smartrecrutare.employer.repository.EmployerRepository;
+import com.samplus.smartrecrutare.localauth.service.LocalAuthorizationService;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
@@ -27,10 +28,12 @@ class EmployerServiceTest {
 
     private final EmployerRepository employerRepository = mock(EmployerRepository.class);
     private final DepozitJoburi depozitJoburi = mock(DepozitJoburi.class);
+    private final LocalAuthorizationService localAuthorizationService = mock(LocalAuthorizationService.class);
     private final EmployerService service = new EmployerService(
             employerRepository,
             depozitJoburi,
-            new EmployerMapper()
+            new EmployerMapper(),
+            localAuthorizationService
     );
 
     @Test
@@ -43,6 +46,7 @@ class EmployerServiceTest {
         assertThat(response.getNume()).isEqualTo("Samplus");
         assertThat(response.getStatus()).isEqualTo(EmployerStatus.ACTIV);
         verify(employerRepository).saveAndFlush(any(Employer.class));
+        verify(localAuthorizationService).assignCreatedEmployerIfLocalManager(any(Employer.class));
     }
 
     @Test

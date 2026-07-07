@@ -10,6 +10,7 @@ import com.samplus.smartrecrutare.employer.exception.EmployerInUseException;
 import com.samplus.smartrecrutare.employer.exception.EmployerNotFoundException;
 import com.samplus.smartrecrutare.employer.mapper.EmployerMapper;
 import com.samplus.smartrecrutare.employer.repository.EmployerRepository;
+import com.samplus.smartrecrutare.localauth.service.LocalAuthorizationService;
 import com.samplus.smartrecrutare.models.PaginaModel;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -24,15 +25,18 @@ public class EmployerService {
     private final EmployerRepository employerRepository;
     private final DepozitJoburi depozitJoburi;
     private final EmployerMapper mapper;
+    private final LocalAuthorizationService localAuthorizationService;
 
     public EmployerService(
             EmployerRepository employerRepository,
             DepozitJoburi depozitJoburi,
-            EmployerMapper mapper
+            EmployerMapper mapper,
+            LocalAuthorizationService localAuthorizationService
     ) {
         this.employerRepository = employerRepository;
         this.depozitJoburi = depozitJoburi;
         this.mapper = mapper;
+        this.localAuthorizationService = localAuthorizationService;
     }
 
     @Transactional
@@ -50,6 +54,7 @@ public class EmployerService {
                 request.getStatus()
         );
         employerRepository.saveAndFlush(employer);
+        localAuthorizationService.assignCreatedEmployerIfLocalManager(employer);
         return mapper.toResponse(employer);
     }
 

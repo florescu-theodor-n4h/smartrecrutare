@@ -97,7 +97,7 @@ public class EmployerController {
             @ApiResponse(responseCode = "409", description = "Cod fiscal duplicat")
     })
     @PutMapping("/{id}")
-    @PreAuthorize(RoluriAplicatie.ADMIN_OR_MANAGER)
+    @PreAuthorize("@localAuthorizationService.canManageEmployer(#id)")
     public ResponseEntity<EmployerResponse> update(
             @PathVariable Long id,
             @Valid @RequestBody EmployerUpdateRequest request

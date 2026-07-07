@@ -61,6 +61,9 @@ public interface DepozitJoburi extends JpaRepository<Job, Long> {
     @Query("SELECT j FROM Job j WHERE j.activ = true AND LOWER(j.companie) = LOWER(:companie)")
     List<Job> findActiveByCompanie(@Param("companie") String companie);
 
+    @Query("SELECT j.employer.id FROM Job j WHERE j.id = :jobId")
+    java.util.Optional<Long> findEmployerIdByJobId(@Param("jobId") Long jobId);
+
     /**
      * Returnează numărul de joburi active din sistem.
      *

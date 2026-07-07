@@ -81,7 +81,7 @@ public class ControllerJoburi {
             @ApiResponse(responseCode = "404", description = "Angajator inexistent")
     })
     @PostMapping
-    @PreAuthorize(RoluriAplicatie.ADMIN_OR_MANAGER)
+    @PreAuthorize("@localAuthorizationService.canManageEmployer(#request.employerId)")
     public ResponseEntity<JobResponse> createJob(@Valid @RequestBody JobCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(serviciuJoburi.creareDinRequest(request));
     }
@@ -97,7 +97,7 @@ public class ControllerJoburi {
             @ApiResponse(responseCode = "404", description = "Job sau angajator inexistent")
     })
     @PutMapping("/{id}")
-    @PreAuthorize(RoluriAplicatie.ADMIN_OR_MANAGER)
+    @PreAuthorize("@localAuthorizationService.canManageJob(#id)")
     public ResponseEntity<JobResponse> updateJob(
             @Parameter(description = "ID-ul jobului de actualizat", required = true)
             @PathVariable Long id,
