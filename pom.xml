@@ -92,6 +92,20 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- driver MySql -->
+		<dependency>
+			<groupId>com.mysql</groupId>
+			<artifactId>mysql-connector-j</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+
+		<!-- Mariadb este folosit acuma de catre XAMPP -->
+		<dependency>
+			<groupId>org.mariadb.jdbc</groupId>
+			<artifactId>mariadb-java-client</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+
 		<!-- Spring Security: adauga autentificare, autorizare si protectii de securitate pentru aplicatie.
      Este baza pentru reguli de acces, filtre security, parole, sesiuni sau integrare cu token-uri. -->
 		<dependency>

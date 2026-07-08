@@ -2,14 +2,16 @@ spring:
   application:
     name: smartrecrutare
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:5432/${DB_NAME:smartrecrutare}
+    url: jdbc:${DB_TYPE:postgresql}://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:smartrecrutare}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD}
     # driver pentru aws
-    driver-class-name: org.postgresql.Driver
+    driver-class-name: ${DB_CLASS:org.postgresql.Driver}
 
   jpa:
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    #database-platform: org.hibernate.dialect.PostgreSQLDialect
+    database-platform: org.hibernate.dialect.${DB_DIALECT:PostgreSQLDialect}
+
     hibernate:
       ddl-auto: update
     properties:
@@ -45,12 +47,12 @@ logging:
 #  port: 8080
 
 auth0:
-  domain: YOUR_TENANT.eu.auth0.com
-  client-id: YOUR_AUTH0_CLIENT_ID
-  client-secret: YOUR_AUTH0_CLIENT_SECRET
-  audience: https://your-api
-  redirect-uri: http://localhost:8080/auth/callback
-  vue-redirect-uri: http://localhost:5173
+  domain: dev-hqeowpbz7cmw3n3m.us.auth0.com
+  client-id: mjMWbQgLWxFrLAmMrtfni5CjQhOQRaTK
+  client-secret: llybKfw4Uxj6mBPArEG9lPpW1v-UU59O6vRyyKOW8c9qJSQfBU_-W54y6SOY0l3K
+  audience: https://smartrecrutare.app.apiaud
+  redirect-uri: __dynamic__
+  vue-redirect-uri: __dynamic__
   jar:
     key-id: YOUR_AUTH0_JAR_KEY_ID
     private-key-location: classpath:local-secrets/auth0-jar-private-key.pem
