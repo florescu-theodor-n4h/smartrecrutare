@@ -1,5 +1,6 @@
 package com.samplus.smartrecrutare;
 
+import com.samplus.smartrecrutare.auth.Auth0OAuthException;
 import com.samplus.smartrecrutare.employer.exception.DuplicateFiscalCodeException;
 import com.samplus.smartrecrutare.employer.exception.EmployerInUseException;
 import com.samplus.smartrecrutare.employer.exception.EmployerNotFoundException;
@@ -56,6 +57,22 @@ public class HandlerExceptiiGlobal {
     @ExceptionHandler(LocalAuthDisabledException.class)
     ProblemDetail localAuthDisabled(LocalAuthDisabledException exception) {
         return problema(HttpStatus.SERVICE_UNAVAILABLE, "LocalAuth indisponibil", exception.getMessage());
+    }
+
+    @ExceptionHandler(Auth0OAuthException.class)
+    ProblemDetail auth0OAuth(Auth0OAuthException exception) {
+        log.warn("Auth0 OAuth failure: {}", exception.getMessage());
+        ProblemDetail detail = problema(exception.getResponseStatus(), "Eroare Auth0", exception.getMessage());
+
+        if (exception.getAuth0Status() != null) {
+            detail.setProperty("auth0Status", exception.getAuth0Status());
+        }
+
+        if (exception.getAuth0Body() != null && !exception.getAuth0Body().isBlank()) {
+            detail.setProperty("auth0Response", exception.getAuth0Body());
+        }
+
+        return detail;
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

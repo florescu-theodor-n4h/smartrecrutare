@@ -10,6 +10,8 @@ import org.springframework.security.oauth2.jwt.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.security.MessageDigest;
@@ -22,13 +24,15 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class Auth0Service {
+    static final String OAUTH_REDIRECT_URI = "oauth_redirect_uri";
+
     private final Auth0Props properties;
     //@Qualifier("jarJwtEncoder") selectat automatic dupa nume
     private final JwtEncoder jarJwtEncoder;
     private final RestClient secureRestClient;
 
 
-    public String createAuthorizeUrl(HttpSession session) {
+    public String createAuthorizeUrl(HttpSession session, String redirectUri) {
         String state = randomUrlSafe();
         String nonce = randomUrlSafe();
         String codeVerifier = randomUrlSafe();
@@ -37,8 +41,9 @@ public class Auth0Service {
         session.setAttribute("oauth_state", state);
         session.setAttribute("oauth_nonce", nonce);
         session.setAttribute("pkce_code_verifier", codeVerifier);
+        session.setAttribute(OAUTH_REDIRECT_URI, redirectUri);
 
-        String jarJwt = createJarJwt(state, nonce, codeChallenge);
+        String jarJwt = createJarJwt(state, nonce, codeChallenge, redirectUri);
 
         String requestUri = pushJarToAuth0ParEndpoint(jarJwt);
 
@@ -54,13 +59,18 @@ public class Auth0Service {
     public Map<String, Object> exchangeCodeForTokens(String code, String returnedState, HttpSession session) {
         String expectedState = (String) session.getAttribute("oauth_state");
         String codeVerifier = (String) session.getAttribute("pkce_code_verifier");
+        String redirectUri = (String) session.getAttribute(OAUTH_REDIRECT_URI);
 
         if (expectedState == null || !expectedState.equals(returnedState)) {
-            throw new IllegalStateException("Invalid OAuth state");
+            throw Auth0OAuthException.badRequest("Invalid OAuth state");
         }
 
         if (codeVerifier == null) {
-            throw new IllegalStateException("Missing PKCE code verifier");
+            throw Auth0OAuthException.badRequest("Missing PKCE code verifier");
+        }
+
+        if (redirectUri == null || redirectUri.isBlank()) {
+            throw Auth0OAuthException.badRequest("Missing OAuth redirect URI");
         }
 
         LinkedMultiValueMap<String, String> body = new LinkedMultiValueMap<>();
@@ -68,25 +78,20 @@ public class Auth0Service {
         body.add("client_id", properties.getClientId());
         body.add("client_secret", properties.getClientSecret());
         body.add("code", code);
-        body.add("redirect_uri", properties.getRedirectUri());
+        body.add("redirect_uri", redirectUri);
         body.add("code_verifier", codeVerifier);
 
-        Map<String, Object> tokenResponse = secureRestClient
-                .post()
-                .uri("/oauth/token")
-                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .body(body)
-                .retrieve()
-                .body(Map.class);
+        Map<String, Object> tokenResponse = postFormForMap("/oauth/token", body, "token exchange");
 
         session.removeAttribute("oauth_state");
         session.removeAttribute("oauth_nonce");
         session.removeAttribute("pkce_code_verifier");
+        session.removeAttribute(OAUTH_REDIRECT_URI);
 
         return tokenResponse;
     }
 
-    private String createJarJwt(String state, String nonce, String codeChallenge) {
+    private String createJarJwt(String state, String nonce, String codeChallenge, String redirectUri) {
         Instant now = Instant.now();
 
         JwtClaimsSet.Builder claimsBuilder = JwtClaimsSet.builder()
@@ -96,7 +101,7 @@ public class Auth0Service {
                 .expiresAt(now.plusSeconds(300))
                 .claim("client_id", properties.getClientId())
                 .claim("response_type", "code")
-                .claim("redirect_uri", properties.getRedirectUri())
+                .claim("redirect_uri", redirectUri)
                 .claim("scope", "openid profile email")
                 .claim("state", state)
                 .claim("nonce", nonce)
@@ -126,13 +131,7 @@ public class Auth0Service {
         body.add("client_secret", properties.getClientSecret());
         body.add("request", jarJwt);
 
-        Map<String, Object> response = secureRestClient
-                .post()
-                .uri("/oauth/par")
-                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .body(body)
-                .retrieve()
-                .body(Map.class);
+        Map<String, Object> response = postFormForMap("/oauth/par", body, "PAR request");
 
         assert response != null;
         Object requestUri = response.get("request_uri");
@@ -142,6 +141,29 @@ public class Auth0Service {
         }
 
         return requestUri.toString();
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> postFormForMap(String uri, LinkedMultiValueMap<String, String> body, String operation) {
+        try {
+            return secureRestClient
+                    .post()
+                    .uri(uri)
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(body)
+                    .retrieve()
+                    .body(Map.class);
+        } catch (Auth0OAuthException exception) {
+            throw exception;
+        } catch (RestClientResponseException exception) {
+            throw Auth0OAuthException.upstream(
+                    operation,
+                    exception.getStatusCode().value(),
+                    exception.getResponseBodyAsString()
+            );
+        } catch (RestClientException exception) {
+            throw Auth0OAuthException.upstreamUnavailable(operation, exception.getMessage());
+        }
     }
 
     private static String randomUrlSafe() {

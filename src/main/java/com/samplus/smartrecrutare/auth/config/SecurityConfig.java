@@ -1,5 +1,6 @@
 package com.samplus.smartrecrutare.auth.config;
 
+import com.samplus.smartrecrutare.auth.Auth0OAuthException;
 import com.samplus.smartrecrutare.localauth.config.LocalAuthProperties;
 import com.samplus.smartrecrutare.localauth.security.SmartRecrutareJwtDecoder;
 import com.samplus.smartrecrutare.localauth.service.LocalAuthTokenService;
@@ -29,6 +30,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.nio.charset.StandardCharsets;
 import java.net.http.HttpClient;
 import java.util.Arrays;
 
@@ -135,8 +137,11 @@ public class SecurityConfig {
                 .defaultStatusHandler(
                         status -> status.is4xxClientError() || status.is5xxServerError(),
                         (request, response) -> {
-                            throw new IllegalStateException(
-                                    "Cererea a esuat, cu codul de eroare: " + response.getStatusCode()
+                            String responseBody = new String(response.getBody().readAllBytes(), StandardCharsets.UTF_8);
+                            throw Auth0OAuthException.upstream(
+                                    request.getURI().getPath(),
+                                    response.getStatusCode().value(),
+                                    responseBody
                             );
                         }
                 )

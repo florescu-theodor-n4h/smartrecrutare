@@ -3,6 +3,7 @@ package com.samplus.smartrecrutare.auth;
 import com.samplus.smartrecrutare.auth.config.Auth0Props;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -24,6 +25,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.http.HttpMethod.POST;
 
 class Auth0ServiceTest {
@@ -54,7 +56,7 @@ class Auth0ServiceTest {
                 .andExpect(content().string(containsString("request=signed-jar")))
                 .andRespond(withSuccess("{\"request_uri\":\"urn:auth0:par:test-request\"}", MediaType.APPLICATION_JSON));
 
-        String authorizeUrl = service.createAuthorizeUrl(session);
+        String authorizeUrl = service.createAuthorizeUrl(session, "https://app.example.test/auth/callback");
 
         assertThat(authorizeUrl)
                 .startsWith("https://unit-test.auth0.com/authorize")
@@ -65,6 +67,7 @@ class Auth0ServiceTest {
         assertThat(session.getAttribute("oauth_state")).isInstanceOf(String.class);
         assertThat(session.getAttribute("oauth_nonce")).isInstanceOf(String.class);
         assertThat(session.getAttribute("pkce_code_verifier")).isInstanceOf(String.class);
+        assertThat(session.getAttribute("oauth_redirect_uri")).isEqualTo("https://app.example.test/auth/callback");
         server.verify();
     }
 
@@ -73,9 +76,10 @@ class Auth0ServiceTest {
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("oauth_state", "expected-state");
         session.setAttribute("pkce_code_verifier", "verifier");
+        session.setAttribute("oauth_redirect_uri", "http://localhost:8080/auth/callback");
 
         assertThatThrownBy(() -> service.exchangeCodeForTokens("code", "wrong-state", session))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(Auth0OAuthException.class)
                 .hasMessage("Invalid OAuth state");
 
         server.verify();
@@ -85,10 +89,41 @@ class Auth0ServiceTest {
     void exchangeCodeForTokensRejectsMissingPkceVerifierBeforeCallingAuth0() {
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("oauth_state", "expected-state");
+        session.setAttribute("oauth_redirect_uri", "http://localhost:8080/auth/callback");
 
         assertThatThrownBy(() -> service.exchangeCodeForTokens("code", "expected-state", session))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(Auth0OAuthException.class)
                 .hasMessage("Missing PKCE code verifier");
+
+        server.verify();
+    }
+
+    @Test
+    void exchangeCodeForTokensRejectsMissingRedirectUriBeforeCallingAuth0() {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("oauth_state", "expected-state");
+        session.setAttribute("pkce_code_verifier", "verifier");
+
+        assertThatThrownBy(() -> service.exchangeCodeForTokens("code", "expected-state", session))
+                .isInstanceOf(Auth0OAuthException.class)
+                .hasMessage("Missing OAuth redirect URI");
+
+        server.verify();
+    }
+
+    @Test
+    void createAuthorizeUrlIncludesAuth0BadRequestBodyInException() {
+        MockHttpSession session = new MockHttpSession();
+        server.expect(requestTo("https://unit-test.auth0.com/oauth/par"))
+                .andExpect(method(POST))
+                .andRespond(withStatus(HttpStatus.BAD_REQUEST)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"error\":\"invalid_request\",\"error_description\":\"redirect_uri is invalid\"}"));
+
+        assertThatThrownBy(() -> service.createAuthorizeUrl(session, "https://app.example.test/auth/callback"))
+                .isInstanceOf(Auth0OAuthException.class)
+                .hasMessageContaining("Auth0 PAR request failed with status 400")
+                .hasMessageContaining("redirect_uri is invalid");
 
         server.verify();
     }
@@ -99,13 +134,14 @@ class Auth0ServiceTest {
         session.setAttribute("oauth_state", "expected-state");
         session.setAttribute("oauth_nonce", "nonce");
         session.setAttribute("pkce_code_verifier", "verifier-123");
+        session.setAttribute("oauth_redirect_uri", "https://app.example.test/auth/callback");
         server.expect(requestTo("https://unit-test.auth0.com/oauth/token"))
                 .andExpect(method(POST))
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_FORM_URLENCODED))
                 .andExpect(content().string(containsString("grant_type=authorization_code")))
                 .andExpect(content().string(containsString("client_id=client-test")))
                 .andExpect(content().string(containsString("code=code-123")))
-                .andExpect(content().string(containsString("redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fauth%2Fcallback")))
+                .andExpect(content().string(containsString("redirect_uri=https%3A%2F%2Fapp.example.test%2Fauth%2Fcallback")))
                 .andExpect(content().string(containsString("code_verifier=verifier-123")))
                 .andRespond(withSuccess("""
                         {
@@ -125,6 +161,7 @@ class Auth0ServiceTest {
         assertThat(session.getAttribute("oauth_state")).isNull();
         assertThat(session.getAttribute("oauth_nonce")).isNull();
         assertThat(session.getAttribute("pkce_code_verifier")).isNull();
+        assertThat(session.getAttribute("oauth_redirect_uri")).isNull();
         server.verify();
     }
 
@@ -134,8 +171,8 @@ class Auth0ServiceTest {
         props.setClientId("client-test");
         props.setClientSecret("client-secret-test");
         props.setAudience("https://api.example.test");
-        props.setRedirectUri("http://localhost:8080/auth/callback");
-        props.setVueRedirectUri("http://localhost:5173/auth/callback");
+        props.setRedirectUri("__dynamic__");
+        props.setVueRedirectUri("__dynamic__");
         props.getJar().setKeyId("kid-test");
         return props;
     }
