@@ -13,6 +13,7 @@ import com.samplus.smartrecrutare.analytics.service.RegistruExecutiiAnalitice;
 import com.samplus.smartrecrutare.models.StarePotrivire;
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -52,9 +53,9 @@ class ProcesatorAnaliticeFundalImplicitTest {
                 StarePotrivire.PESTE_PRAG
         );
         when(furnizor.citeste()).thenReturn(new LotDatePotrivire(
-                List.of(profil),
-                List.of(job),
-                List.of(tipar)
+                Arrays.asList(profil),
+                Arrays.asList(job),
+                Arrays.asList(tipar)
         ));
         when(strategie.calculeaza(profil, job, tipar)).thenReturn(scor);
         when(persistenta.salveaza(scor)).thenReturn(new RezultatPersistare(true, true));

@@ -11,10 +11,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class LocalAuthProperties {
     private boolean enabled;
     private String issuer = "smartrecrutare-local";
+    private String keyId = "auth-local-sym-v1";
+    private String secretLocation = "classpath:local-secrets/auth-local-symmetric.key";
     private String secret;
     private long accessTokenMinutes = 60;
 
     public boolean hasSigningSecret() {
-        return secret != null && secret.length() >= 32;
+        return (secret != null && !secret.isBlank()) || (secretLocation != null && !secretLocation.isBlank());
     }
 }

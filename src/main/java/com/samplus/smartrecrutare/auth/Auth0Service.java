@@ -19,6 +19,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -212,7 +213,7 @@ public class Auth0Service {
 
         JwtClaimsSet.Builder claimsBuilder = JwtClaimsSet.builder()
                 .issuer(properties.getClientId())
-                .audience(List.of("https://" + properties.getDomain() + "/"))
+                .audience(Arrays.asList("https://" + properties.getDomain() + "/"))
                 .issuedAt(now)
                 .expiresAt(now.plusSeconds(TOKEN_MIN_SECONDS))
                 .claim("client_id", properties.getClientId())

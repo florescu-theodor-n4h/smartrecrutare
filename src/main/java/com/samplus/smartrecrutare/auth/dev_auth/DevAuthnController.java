@@ -1,9 +1,8 @@
 package com.samplus.smartrecrutare.auth.dev_auth;
 
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.annotation.Profile;
 import org.springframework.http.MediaType;
-import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
@@ -91,11 +90,11 @@ public class DevAuthnController {
         Instant now = Instant.now();
 
         JwtClaimsSet claims = JwtClaimsSet.builder()
-                .issuer("local-dev")
-                .subject("swagger-dev-user")
+                .issuer(DevAuthProperties.ISSUER_DEV)
+                .subject(DevAuthProperties.SUBJECT_DEV)
                 .issuedAt(now)
                 .expiresAt(now.plus(Duration.ofHours(4)))
-                .claim("roles", List.of("admin", "recruiter"))
+                .claim("roles", DevAuthProperties.ROLES_DEV)
                 .build();
 
         JwsHeader header = JwsHeader.with(SignatureAlgorithm.RS256)

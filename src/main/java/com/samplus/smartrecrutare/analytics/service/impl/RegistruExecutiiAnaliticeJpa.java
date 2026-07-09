@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -23,7 +24,7 @@ import java.util.stream.Collectors;
 @Service
 public class RegistruExecutiiAnaliticeJpa implements RegistruExecutiiAnalitice {
 
-    private static final List<StareExecutieAnalitica> STARI_ACTIVE = List.of(
+    private static final List<StareExecutieAnalitica> STARI_ACTIVE = Arrays.asList(
             StareExecutieAnalitica.IN_ASTEPTARE,
             StareExecutieAnalitica.IN_EXECUTIE
     );

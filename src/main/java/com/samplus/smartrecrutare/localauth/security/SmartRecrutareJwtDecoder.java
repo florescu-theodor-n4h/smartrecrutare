@@ -2,7 +2,6 @@ package com.samplus.smartrecrutare.localauth.security;
 
 import com.nimbusds.jwt.SignedJWT;
 import com.samplus.smartrecrutare.localauth.config.LocalAuthProperties;
-import com.samplus.smartrecrutare.localauth.service.LocalAuthTokenService;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -15,24 +14,24 @@ import java.text.ParseException;
 public class SmartRecrutareJwtDecoder implements JwtDecoder {
     private final String auth0Issuer;
     private final LocalAuthProperties localAuthProperties;
-    private final LocalAuthTokenService localAuthTokenService;
+    private final JwtDecoder localAuthJwtDecoder;
     private volatile JwtDecoder auth0Decoder;
 
     public SmartRecrutareJwtDecoder(
             String auth0Issuer,
             LocalAuthProperties localAuthProperties,
-            LocalAuthTokenService localAuthTokenService
+            JwtDecoder localAuthJwtDecoder
     ) {
         this.auth0Issuer = auth0Issuer;
         this.localAuthProperties = localAuthProperties;
-        this.localAuthTokenService = localAuthTokenService;
+        this.localAuthJwtDecoder = localAuthJwtDecoder;
     }
 
     @Override
     @NullMarked
     public Jwt decode(String token) throws JwtException {
         if (isLocalToken(token)) {
-            return localAuthTokenService.decode(token);
+            return localAuthJwtDecoder.decode(token);
         }
         JwtDecoder decoder = auth0Decoder();
         if (decoder == null) {

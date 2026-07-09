@@ -4,6 +4,7 @@ import com.samplus.smartrecrutare.localauth.config.LocalAuthProperties;
 import com.samplus.smartrecrutare.localauth.domain.LocalUser;
 import com.samplus.smartrecrutare.localauth.exception.LocalAuthDisabledException;
 import com.samplus.smartrecrutare.security.RolAplicatie;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -11,11 +12,8 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
-import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.stereotype.Service;
 
-import javax.crypto.spec.SecretKeySpec;
 import java.time.Instant;
 
 /** Emite si valideaza tokenuri JWT semnate local pentru LocalAuth. */
@@ -26,9 +24,17 @@ public class LocalAuthTokenService {
     private static final String CLAIM_ROLES = "roles";
 
     private final LocalAuthProperties properties;
+    private final JwtEncoder localAuthJwtEncoder;
+    private final JwtDecoder localAuthJwtDecoder;
 
-    public LocalAuthTokenService(LocalAuthProperties properties) {
+    public LocalAuthTokenService(
+            LocalAuthProperties properties,
+            @Qualifier("localAuthJwtEncoder") JwtEncoder localAuthJwtEncoder,
+            @Qualifier("localAuthJwtDecoder") JwtDecoder localAuthJwtDecoder
+    ) {
         this.properties = properties;
+        this.localAuthJwtEncoder = localAuthJwtEncoder;
+        this.localAuthJwtDecoder = localAuthJwtDecoder;
     }
 
     public TokenData createToken(LocalUser user) {
@@ -45,32 +51,21 @@ public class LocalAuthTokenService {
                 .claim("local_user_id", user.getId())
                 .build();
 
-        JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).type("JWT").build();
-        String token = encoder().encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
+        JwsHeader header = JwsHeader.with(MacAlgorithm.HS256)
+                .keyId(properties.getKeyId())
+                .type("JWT")
+                .build();
+        String token = localAuthJwtEncoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
         return new TokenData(token, expiresAt);
     }
 
     public Jwt decode(String token) {
         ensureEnabled();
-        return decoder().decode(token);
+        return localAuthJwtDecoder.decode(token);
     }
 
     public boolean isEnabled() {
         return properties.isEnabled() && properties.hasSigningSecret();
-    }
-
-    private JwtEncoder encoder() {
-        return new NimbusJwtEncoder(new com.nimbusds.jose.jwk.source.ImmutableSecret<>(secretKey()));
-    }
-
-    private JwtDecoder decoder() {
-        return NimbusJwtDecoder.withSecretKey(secretKey())
-                .macAlgorithm(MacAlgorithm.HS256)
-                .build();
-    }
-
-    private SecretKeySpec secretKey() {
-        return new SecretKeySpec(properties.getSecret().getBytes(java.nio.charset.StandardCharsets.UTF_8), "HmacSHA256");
     }
 
     private void ensureEnabled() {

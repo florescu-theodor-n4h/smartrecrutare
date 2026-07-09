@@ -61,5 +61,7 @@ auth0:
 local-auth:
   enabled: ${LOCAL_AUTH_ENABLED:false}
   issuer: ${LOCAL_AUTH_ISSUER:smartrecrutare-local}
+  key-id: ${LOCAL_AUTH_JWT_KEY_ID:auth-local-sym-v1}
+  secret-location: ${LOCAL_AUTH_JWT_SECRET_LOCATION:classpath:local-secrets/auth-local-symmetric.key}
   secret: ${LOCAL_AUTH_JWT_SECRET:}
   access-token-minutes: ${LOCAL_AUTH_ACCESS_TOKEN_MINUTES:60}

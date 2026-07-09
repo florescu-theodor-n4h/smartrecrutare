@@ -6,6 +6,9 @@ import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
+import java.util.Arrays;
+import java.util.List;
+
 /**
  * Proprietati pentru autentificarea Basic folosita exclusiv de endpoint-urile {@code /dev-auth/**}.
  *
@@ -30,4 +33,8 @@ public class DevAuthProperties {
     @NotBlank
     private String basicPassword = "dev";
 
+    // proprietati interne
+    public static final String ISSUER_DEV="local-dev";
+    public static final String SUBJECT_DEV="swagger-dev-user";
+    public static final List<String> ROLES_DEV = Arrays.asList("admin", "recruiter");
 }

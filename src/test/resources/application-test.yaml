@@ -16,5 +16,7 @@ spring:
 local-auth:
   enabled: true
   issuer: smartrecrutare-local-test
-  secret: test-local-auth-secret-32-characters-minimum
+  key-id: auth-local-test-sym-v1
+  secret-location: classpath:local-secrets/auth-local-symmetric.key
+  secret: ""
   access-token-minutes: 30

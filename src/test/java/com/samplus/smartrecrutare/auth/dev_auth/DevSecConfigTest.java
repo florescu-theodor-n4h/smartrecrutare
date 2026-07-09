@@ -2,6 +2,7 @@ package com.samplus.smartrecrutare.auth.dev_auth;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,6 +18,12 @@ import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.HttpHeaders.WWW_AUTHENTICATE;
@@ -91,6 +98,25 @@ class DevSecConfigTest {
         @Bean
         DevAuthProbeController devAuthProbeController() {
             return new DevAuthProbeController();
+        }
+
+        @Bean
+        @Qualifier("jarPrivateKey")
+        RSAPrivateKey jarPrivateKey(KeyPair devAuthKeyPair) {
+            return (RSAPrivateKey) devAuthKeyPair.getPrivate();
+        }
+
+        @Bean
+        @Qualifier("jarPublicKey")
+        RSAPublicKey jarPublicKey(KeyPair devAuthKeyPair) {
+            return (RSAPublicKey) devAuthKeyPair.getPublic();
+        }
+
+        @Bean
+        KeyPair devAuthKeyPair() throws NoSuchAlgorithmException {
+            KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+            generator.initialize(2048);
+            return generator.generateKeyPair();
         }
     }
 

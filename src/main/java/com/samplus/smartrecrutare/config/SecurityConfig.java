@@ -2,9 +2,11 @@ package com.samplus.smartrecrutare.config;
 
 import com.samplus.smartrecrutare.auth.Auth0OAuthException;
 import com.samplus.smartrecrutare.auth.config.Auth0Props;
+import com.samplus.smartrecrutare.auth.dev_auth.DevAuthProperties;
 import com.samplus.smartrecrutare.localauth.config.LocalAuthProperties;
 import com.samplus.smartrecrutare.localauth.security.SmartRecrutareJwtDecoder;
 import com.samplus.smartrecrutare.security.RbacJwtAuthenticationConverter;
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -24,20 +26,20 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.CsrfConfigurer;
 import org.springframework.security.config.annotation.web.configurers.SessionManagementConfigurer;
-import org.springframework.security.config.annotation.web.configurers.oauth2.server.resource.OAuth2ResourceServerConfigurer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.nio.charset.StandardCharsets;
 import java.net.http.HttpClient;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
@@ -45,18 +47,17 @@ import static org.springframework.security.config.http.SessionCreationPolicy.STA
 /**
  * Configuratia principala de securitate pentru API, SPA si resursele OAuth2/JWT.
  *
- * <p>Endpoint-urile speciale {@code /dev-auth/**} sunt tratate de un lant separat in profilul
- * {@code dev}; aici sunt refuzate explicit ca sa nu ramana expuse in profilurile normale.</p>
+ * <p>Endpoint-urile speciale {@code /dev-auth/**} sunt tratate de lantul dedicat din
+ * {@code DevSecConfig}; aici raman refuzate daca lantul dedicat nu este disponibil.</p>
  */
 @Configuration
 @EnableConfigurationProperties({Auth0Props.class, LocalAuthProperties.class, HTTPAccessPathsProperties.class})
 @EnableWebSecurity
-@EnableMethodSecurity
-        (
-                prePostEnabled = true,
-                securedEnabled = true,
-                jsr250Enabled = true
-        )
+@EnableMethodSecurity(
+        prePostEnabled = true,
+        securedEnabled = true,
+        jsr250Enabled = true
+)
 public class SecurityConfig {
     private void disableCsrf(@NonNull CsrfConfigurer<HttpSecurity> conf) {
         conf.disable();
@@ -68,7 +69,7 @@ public class SecurityConfig {
 
         config.setAllowedOriginPatterns(Arrays.asList("*"));
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(Arrays.asList("*")) ;
+        config.setAllowedHeaders(Arrays.asList("*"));
         config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -108,40 +109,50 @@ public class SecurityConfig {
                         .requestMatchers("/bot/**").authenticated()
                         .requestMatchers("/bots/**").authenticated()
                         .anyRequest().permitAll()
-                ).oauth2ResourceServer(new Customizer<OAuth2ResourceServerConfigurer<HttpSecurity>>() {
-                    @Override
-                    public void customize(OAuth2ResourceServerConfigurer<HttpSecurity> oauth) {
-                        oauth.jwt(new Customizer<OAuth2ResourceServerConfigurer<org.springframework.security.config.annotation.web.builders.HttpSecurity>.JwtConfigurer>() {
-                            @Override
-                            public void customize(OAuth2ResourceServerConfigurer<HttpSecurity>.JwtConfigurer jwt) {
-                                jwt             .decoder(multiDecoder).
-                                        jwtAuthenticationConverter(rbacJwtAuthenticationConverter());
-                            }
-                        });
-                    };
-                })
+                )
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt ->
+                        jwt.decoder(multiDecoder)
+                                .jwtAuthenticationConverter(rbacJwtAuthenticationConverter())
+                ))
                 .build();
     }
 
-    @Bean
+    /*@Bean
     @Qualifier("multiDecoder")
     JwtDecoder multiDecoder(
-            @Qualifier("devDecoder") JwtDecoder devDecoder,
-            @Qualifier("auth0Decoder") JwtDecoder auth0Decoder
     ) {
-        return new JwtDecoder() {
-            @NullMarked
-            @Override
-            public Jwt decode(String token) throws JwtException {
-                String issuer = JwtHelper.headersAndClaims(token).getClaims().get("iss").toString();
+        return new MultiDecoder();
+    } TODO*/
 
-                if ("smart-recrutare-dev".equals(issuer)) {
-                    return devDecoder.decode(token);
-                }
+    @Component("multiDecoder")
+    //@RequiredArgsConstructor
+    @NullMarked
+    private static final class MultiDecoder implements JwtDecoder {
+        @Qualifier("devDecoder")            private final JwtDecoder devDecoder;
+        @Qualifier("localAuthJwtDecoder")   private final JwtDecoder localAuthJwtDecoder;
+        @Qualifier("auth0Decoder")          private final JwtDecoder auth0Decoder;
+        private final                       LocalAuthProperties localAuthProperties;
+        public MultiDecoder(@Qualifier("auth0Decoder")          JwtDecoder devDecoder,
+                            @Qualifier("localAuthJwtDecoder")   JwtDecoder localAuthJwtDecoder,
+                            @Qualifier("auth0Decoder")          JwtDecoder auth0Decoder,
+                            LocalAuthProperties localAuthProperties) {
+            this.devDecoder = devDecoder;
+            this.localAuthJwtDecoder = localAuthJwtDecoder;
+            this.auth0Decoder = auth0Decoder;
+            this.localAuthProperties = localAuthProperties;
+        }
 
-                return auth0Decoder.decode(token);
+        @Override
+        public Jwt decode(String token) throws JwtException {
+            String issuer = JwtHelper.issuer(token);
+            if (DevAuthProperties.ISSUER_DEV.equals(issuer)) {
+                return devDecoder.decode(token);
             }
-        };
+            if (localAuthProperties.getIssuer().equals(issuer)) {
+                return localAuthJwtDecoder.decode(token);
+            }
+            return auth0Decoder.decode(token);
+        }
     }
 
     @Bean
@@ -205,5 +216,4 @@ public class SecurityConfig {
                 )
                 .build();
     }
-
 }
