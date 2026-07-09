@@ -19,6 +19,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
+import lombok.Getter;
 
 import java.time.Instant;
 import java.util.LinkedHashSet;
@@ -35,25 +36,32 @@ import java.util.Set;
 )
 public class LocalUser extends AuditableEntity {
 
+    @Getter
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Getter
     @Column(nullable = false, unique = true, length = 80)
     private String username;
 
+    @Getter
     @Column(nullable = false, unique = true, length = 180)
     private String email;
 
+    @Getter
     @Column(name = "password_hash", nullable = false, length = 120)
     private String passwordHash;
 
+    @Getter
     @Column(nullable = false)
     private boolean enabled = true;
 
+    @Getter
     @Column(nullable = false)
     private boolean locked;
 
+    @Getter
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
 
@@ -114,13 +122,6 @@ public class LocalUser extends AuditableEntity {
         this.lastLoginAt = Instant.now();
     }
 
-    public Long getId() { return id; }
-    public String getUsername() { return username; }
-    public String getEmail() { return email; }
-    public String getPasswordHash() { return passwordHash; }
-    public boolean isEnabled() { return enabled; }
-    public boolean isLocked() { return locked; }
-    public Instant getLastLoginAt() { return lastLoginAt; }
     public Set<RolAplicatie> getRoles() { return Set.copyOf(roles); }
     public Set<Employer> getManagedEmployers() { return Set.copyOf(managedEmployers); }
     public boolean administreazaEmployer(Long employerId) {

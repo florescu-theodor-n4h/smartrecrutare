@@ -128,11 +128,11 @@ public class SecurityConfig {
     //@RequiredArgsConstructor
     @NullMarked
     private static final class MultiDecoder implements JwtDecoder {
-        @Qualifier("devDecoder")            private final JwtDecoder devDecoder;
-        @Qualifier("localAuthJwtDecoder")   private final JwtDecoder localAuthJwtDecoder;
-        @Qualifier("auth0Decoder")          private final JwtDecoder auth0Decoder;
-        private final                       LocalAuthProperties localAuthProperties;
-        public MultiDecoder(@Qualifier("auth0Decoder")          JwtDecoder devDecoder,
+        /* @Qualifier("devDecoder") */           private final JwtDecoder devDecoder;
+        /*@Qualifier("localAuthJwtDecoder")*/    private final JwtDecoder localAuthJwtDecoder;
+        /*@Qualifier("auth0Decoder")*/           private final JwtDecoder auth0Decoder;
+        private final                            LocalAuthProperties localAuthProperties;
+        public MultiDecoder(@Qualifier("devDecoder")            JwtDecoder devDecoder,
                             @Qualifier("localAuthJwtDecoder")   JwtDecoder localAuthJwtDecoder,
                             @Qualifier("auth0Decoder")          JwtDecoder auth0Decoder,
                             LocalAuthProperties localAuthProperties) {

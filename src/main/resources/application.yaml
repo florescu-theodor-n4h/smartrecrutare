@@ -59,7 +59,7 @@ auth0:
     public-key-location: classpath:local-secrets/auth0-jar-public-key.pem
 
 local-auth:
-  enabled: ${LOCAL_AUTH_ENABLED:false}
+  enabled: ${LOCAL_AUTH_ENABLED:true}
   issuer: ${LOCAL_AUTH_ISSUER:smartrecrutare-local}
   key-id: ${LOCAL_AUTH_JWT_KEY_ID:auth-local-sym-v1}
   secret-location: ${LOCAL_AUTH_JWT_SECRET_LOCATION:classpath:local-secrets/auth-local-symmetric.key}
