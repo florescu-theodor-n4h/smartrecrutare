@@ -4,9 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samplus.smartrecrutare.HandlerExceptiiGlobal;
 import com.samplus.smartrecrutare.localauth.dto.LocalLoginRequest;
 import com.samplus.smartrecrutare.localauth.dto.LocalLoginResponse;
+import com.samplus.smartrecrutare.localauth.dto.LocalRegistrationRequest;
 import com.samplus.smartrecrutare.localauth.dto.LocalUserResponse;
 import com.samplus.smartrecrutare.localauth.exception.LocalAuthConflictException;
 import com.samplus.smartrecrutare.localauth.service.LocalAuthService;
+import com.samplus.smartrecrutare.localauth.service.LocalRegistrationService;
 import com.samplus.smartrecrutare.security.RolAplicatie;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -32,8 +34,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class LocalAuthControllerTest {
     private final LocalAuthService localAuthService = mock(LocalAuthService.class);
+    private final LocalRegistrationService localRegistrationService = mock(LocalRegistrationService.class);
     private final MockMvc mockMvc = MockMvcBuilders
-            .standaloneSetup(new LocalAuthController(localAuthService))
+            .standaloneSetup(new LocalAuthController(localAuthService, localRegistrationService))
             .setControllerAdvice(new HandlerExceptiiGlobal())
             .build();
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -68,6 +71,58 @@ class LocalAuthControllerTest {
                 .andExpect(jsonPath("$.title").value("Validare esuata"));
 
         verifyNoInteractions(localAuthService);
+    }
+
+    @Test
+    void registerDelegatesToServiceAndReturnsCreatedUser() throws Exception {
+        LocalUserResponse response = localUserResponse("new-user", "new-user@example.test", Set.of(RolAplicatie.USER));
+        when(localRegistrationService.register(any(LocalRegistrationRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post("/auth/local/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new LocalRegistrationRequest(
+                                "new-user",
+                                "new-user@example.test",
+                                "ParolaNoua!123"
+                        ))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.username").value("new-user"))
+                .andExpect(jsonPath("$.email").value("new-user@example.test"))
+                .andExpect(jsonPath("$.roles[0]").value("USER"));
+
+        verify(localRegistrationService).register(any(LocalRegistrationRequest.class));
+    }
+
+    @Test
+    void registerRejectsInvalidRequestBeforeCallingService() throws Exception {
+        mockMvc.perform(post("/auth/local/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new LocalRegistrationRequest(
+                                "",
+                                "invalid",
+                                "short"
+                        ))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validare esuata"));
+
+        verifyNoInteractions(localRegistrationService);
+    }
+
+    @Test
+    void registerMapsConflictToProblemResponse() throws Exception {
+        when(localRegistrationService.register(any(LocalRegistrationRequest.class)))
+                .thenThrow(new LocalAuthConflictException("Emailul local este deja folosit"));
+
+        mockMvc.perform(post("/auth/local/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new LocalRegistrationRequest(
+                                "new-user",
+                                "new-user@example.test",
+                                "ParolaNoua!123"
+                        ))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.title").value("Conflict de date"))
+                .andExpect(jsonPath("$.detail").value("Emailul local este deja folosit"));
     }
 
     @Test
@@ -116,14 +171,18 @@ class LocalAuthControllerTest {
     }
 
     private LocalUserResponse localUserResponse() {
+        return localUserResponse("admin", "admin@example.test", Set.of(RolAplicatie.ADMIN));
+    }
+
+    private LocalUserResponse localUserResponse(String username, String email, Set<RolAplicatie> roles) {
         Instant now = Instant.parse("2026-07-09T09:00:00Z");
         return new LocalUserResponse(
                 1L,
-                "admin",
-                "admin@example.test",
+                username,
+                email,
                 true,
                 false,
-                Set.of(RolAplicatie.ADMIN),
+                roles,
                 Set.of(),
                 now,
                 now,

@@ -9,7 +9,6 @@ import com.samplus.smartrecrutare.localauth.dto.LocalUserResponse;
 import com.samplus.smartrecrutare.localauth.dto.LocalUserRolesRequest;
 import com.samplus.smartrecrutare.localauth.dto.LocalUserUpdateRequest;
 import com.samplus.smartrecrutare.localauth.dto.ManagerEmployerAssignmentRequest;
-import com.samplus.smartrecrutare.localauth.exception.LocalAuthConflictException;
 import com.samplus.smartrecrutare.localauth.exception.LocalAuthNotFoundException;
 import com.samplus.smartrecrutare.localauth.mapper.LocalUserMapper;
 import com.samplus.smartrecrutare.localauth.repository.LocalUserRepository;
@@ -29,22 +28,25 @@ public class LocalUserAdminService {
     private final EmployerService employerService;
     private final PasswordEncoder passwordEncoder;
     private final LocalUserMapper mapper;
+    private final LocalUserUniquenessValidator uniquenessValidator;
 
     public LocalUserAdminService(
             LocalUserRepository userRepository,
             EmployerService employerService,
             PasswordEncoder passwordEncoder,
-            LocalUserMapper mapper
+            LocalUserMapper mapper,
+            LocalUserUniquenessValidator uniquenessValidator
     ) {
         this.userRepository = userRepository;
         this.employerService = employerService;
         this.passwordEncoder = passwordEncoder;
         this.mapper = mapper;
+        this.uniquenessValidator = uniquenessValidator;
     }
 
     @Transactional
     public LocalUserResponse create(LocalUserCreateRequest request) {
-        verificaUnicitate(request.getUsername(), request.getEmail(), null);
+        uniquenessValidator.verificaUnicitate(request.getUsername(), request.getEmail(), null);
         LocalUser user = LocalUser.creare(
                 request.getUsername(),
                 request.getEmail(),
@@ -72,7 +74,7 @@ public class LocalUserAdminService {
     @Transactional
     public LocalUserResponse update(Long id, LocalUserUpdateRequest request) {
         LocalUser user = findById(id);
-        verificaUnicitate(request.getUsername(), request.getEmail(), id);
+        uniquenessValidator.verificaUnicitate(request.getUsername(), request.getEmail(), id);
         user.inlocuireProfil(request.getUsername(), request.getEmail(), request.getEnabled(), request.getLocked());
         userRepository.flush();
         return mapper.toResponse(user);
@@ -113,20 +115,5 @@ public class LocalUserAdminService {
 
     private LocalUser findById(Long id) {
         return userRepository.findById(id).orElseThrow(() -> new LocalAuthNotFoundException(id));
-    }
-
-    private void verificaUnicitate(String username, String email, Long currentId) {
-        boolean usernameExists = currentId == null
-                ? userRepository.existsByUsernameIgnoreCase(username)
-                : userRepository.existsByUsernameIgnoreCaseAndIdNot(username, currentId);
-        if (usernameExists) {
-            throw new LocalAuthConflictException("Username-ul local este deja folosit");
-        }
-        boolean emailExists = currentId == null
-                ? userRepository.existsByEmailIgnoreCase(email)
-                : userRepository.existsByEmailIgnoreCaseAndIdNot(email, currentId);
-        if (emailExists) {
-            throw new LocalAuthConflictException("Emailul local este deja folosit");
-        }
     }
 }

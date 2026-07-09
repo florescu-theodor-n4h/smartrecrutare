@@ -96,7 +96,7 @@ public class SecurityConfig {
                         .requestMatchers("/dev-auth/**").denyAll()
                         .requestMatchers(HttpMethod.GET, "/api/jobs/active").permitAll()
                         .requestMatchers("/auth/login", "/auth/callback", "/auth/me").permitAll()
-                        .requestMatchers("/auth/local/login").permitAll()
+                        .requestMatchers("/auth/local/login", "/auth/local/register").permitAll()
                         .requestMatchers("/auth/local/me").authenticated()
                         .requestMatchers("/public/**").permitAll()
                         .requestMatchers("/api/**").authenticated()

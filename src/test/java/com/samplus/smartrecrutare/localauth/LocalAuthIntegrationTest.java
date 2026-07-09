@@ -8,6 +8,7 @@ import com.samplus.smartrecrutare.employer.service.EmployerService;
 import com.samplus.smartrecrutare.job.dto.JobCreateRequest;
 import com.samplus.smartrecrutare.localauth.domain.LocalUser;
 import com.samplus.smartrecrutare.localauth.dto.LocalLoginRequest;
+import com.samplus.smartrecrutare.localauth.dto.LocalRegistrationRequest;
 import com.samplus.smartrecrutare.localauth.dto.LocalUserCreateRequest;
 import com.samplus.smartrecrutare.localauth.dto.ManagerEmployerAssignmentRequest;
 import com.samplus.smartrecrutare.localauth.repository.LocalUserRepository;
@@ -47,6 +48,30 @@ class LocalAuthIntegrationTest {
 
     @Autowired
     private EmployerService employerService;
+
+    @Test
+    void anonymousUserCanRegisterThenLoginWithUserRole() throws Exception {
+        String username = unique("register");
+        String password = "ParolaRegister!123";
+
+        mockMvc.perform(post("/auth/local/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new LocalRegistrationRequest(
+                                username,
+                                username + "@example.test",
+                                password
+                        ))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.username").value(username))
+                .andExpect(jsonPath("$.roles[0]").value("USER"));
+
+        String token = login(username, password);
+
+        mockMvc.perform(get("/auth/local/me")
+                        .header("Authorization", bearer(token)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value(username));
+    }
 
     @Test
     void localAdminCanLoginCreateUsersAndInspectCurrentIdentity() throws Exception {
