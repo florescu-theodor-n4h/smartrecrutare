@@ -6,7 +6,6 @@ import com.samplus.smartrecrutare.auth.dev_auth.DevAuthProperties;
 import com.samplus.smartrecrutare.localauth.config.LocalAuthProperties;
 import com.samplus.smartrecrutare.localauth.security.SmartRecrutareJwtDecoder;
 import com.samplus.smartrecrutare.security.RbacJwtAuthenticationConverter;
-import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -127,7 +126,7 @@ public class SecurityConfig {
     @Component("multiDecoder")
     //@RequiredArgsConstructor
     @NullMarked
-    private static final class MultiDecoder implements JwtDecoder {
+    protected static final class MultiDecoder implements JwtDecoder {
         /* @Qualifier("devDecoder") */           private final JwtDecoder devDecoder;
         /*@Qualifier("localAuthJwtDecoder")*/    private final JwtDecoder localAuthJwtDecoder;
         /*@Qualifier("auth0Decoder")*/           private final JwtDecoder auth0Decoder;

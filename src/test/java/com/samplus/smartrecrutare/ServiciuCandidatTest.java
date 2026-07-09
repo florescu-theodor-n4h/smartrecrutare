@@ -44,11 +44,13 @@ class ServiciuCandidatTest {
     @Test
     void stergereByNameDeletesExistingCandidate() {
         Candidat candidat = candidat(1L, "Ion Popescu", "ion@example.com", "0712345678");
+        Set<Candidat> candidati = Set.of(candidat);
         when(depozitCandidati.findByNumePrenume("Ion Popescu")).thenReturn(Set.of(candidat));
 
         assertThat(serviciu.stergere("Ion Popescu")).isTrue();
-
-        verify(depozitCandidati).delete(candidat);
+        // se sterge doar prin set, pot fi mai multi candidati. candidatul este unic prin
+        // ID-ul lui.
+        verify(depozitCandidati).deleteAll(candidati);
     }
 
     @Test

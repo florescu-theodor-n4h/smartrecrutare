@@ -13,6 +13,7 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+// nu functioneaza cand id inca nu este salvat @EqualsAndHashCode
 @Schema(description = "Candidat din sistemul de recrutare")
 public class Candidat {
     @Id
@@ -30,4 +31,36 @@ public class Candidat {
     // Adresa telefon.
     @Schema(description = "Număr de telefon", example = "+40722111222")
     private String tel;
+
+    /**
+     * Se verifica daca doi Candidati sunt aceeasi entitate.
+     * Doi candidati null nu sunt niciodata identici.
+     * @param obj obiectul cu care este comparat.
+     * @return true daca sunt aceeasi
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
+
+        Candidat other = (Candidat) obj;
+
+        // unregistered entities are never equal
+        if (this.id == null || other.id == null) {
+            return false;
+        }
+
+        // registered entities compare by database identity
+        return this.id.equals(other.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return 31;
+    }
 }
