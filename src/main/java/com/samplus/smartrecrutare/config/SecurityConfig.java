@@ -1,6 +1,7 @@
-package com.samplus.smartrecrutare.auth.config;
+package com.samplus.smartrecrutare.config;
 
 import com.samplus.smartrecrutare.auth.Auth0OAuthException;
+import com.samplus.smartrecrutare.auth.config.Auth0Props;
 import com.samplus.smartrecrutare.localauth.config.LocalAuthProperties;
 import com.samplus.smartrecrutare.localauth.security.SmartRecrutareJwtDecoder;
 import com.samplus.smartrecrutare.localauth.service.LocalAuthTokenService;
@@ -77,6 +78,12 @@ public class SecurityConfig {
                     }
                 })
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**",
+                                "/dev-auth/token"
+                        ).permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/jobs/active").permitAll()
                         .requestMatchers("/auth/login", "/auth/callback", "/auth/me").permitAll()

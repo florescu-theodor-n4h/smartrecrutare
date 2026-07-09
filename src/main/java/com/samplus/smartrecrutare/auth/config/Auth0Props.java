@@ -1,5 +1,6 @@
 package com.samplus.smartrecrutare.auth.config;
 
+import com.samplus.smartrecrutare.config.SecurityConfig;
 import lombok.*;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
