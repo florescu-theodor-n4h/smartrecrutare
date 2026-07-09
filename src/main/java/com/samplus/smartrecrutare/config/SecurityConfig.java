@@ -4,14 +4,15 @@ import com.samplus.smartrecrutare.auth.Auth0OAuthException;
 import com.samplus.smartrecrutare.auth.config.Auth0Props;
 import com.samplus.smartrecrutare.localauth.config.LocalAuthProperties;
 import com.samplus.smartrecrutare.localauth.security.SmartRecrutareJwtDecoder;
-import com.samplus.smartrecrutare.localauth.service.LocalAuthTokenService;
 import com.samplus.smartrecrutare.security.RbacJwtAuthenticationConverter;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -23,9 +24,12 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.CsrfConfigurer;
 import org.springframework.security.config.annotation.web.configurers.SessionManagementConfigurer;
+import org.springframework.security.config.annotation.web.configurers.oauth2.server.resource.OAuth2ResourceServerConfigurer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.cors.CorsConfiguration;
@@ -77,7 +81,8 @@ public class SecurityConfig {
     @Order(2)
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
-            HTTPAccessPathsProperties accessPathsProperties
+            HTTPAccessPathsProperties accessPathsProperties,
+            @Qualifier("multiDecoder") JwtDecoder multiDecoder
     ) throws Exception {
         final String[] publicPaths = accessPathsProperties.getPublicPaths();
 
@@ -103,11 +108,40 @@ public class SecurityConfig {
                         .requestMatchers("/bot/**").authenticated()
                         .requestMatchers("/bots/**").authenticated()
                         .anyRequest().permitAll()
-                )
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt ->
-                        jwt.jwtAuthenticationConverter(rbacJwtAuthenticationConverter())
-                ))
+                ).oauth2ResourceServer(new Customizer<OAuth2ResourceServerConfigurer<HttpSecurity>>() {
+                    @Override
+                    public void customize(OAuth2ResourceServerConfigurer<HttpSecurity> oauth) {
+                        oauth.jwt(new Customizer<OAuth2ResourceServerConfigurer<org.springframework.security.config.annotation.web.builders.HttpSecurity>.JwtConfigurer>() {
+                            @Override
+                            public void customize(OAuth2ResourceServerConfigurer<HttpSecurity>.JwtConfigurer jwt) {
+                                jwt             .decoder(multiDecoder).
+                                        jwtAuthenticationConverter(rbacJwtAuthenticationConverter());
+                            }
+                        });
+                    };
+                })
                 .build();
+    }
+
+    @Bean
+    @Qualifier("multiDecoder")
+    JwtDecoder multiDecoder(
+            @Qualifier("devDecoder") JwtDecoder devDecoder,
+            @Qualifier("auth0Decoder") JwtDecoder auth0Decoder
+    ) {
+        return new JwtDecoder() {
+            @NullMarked
+            @Override
+            public Jwt decode(String token) throws JwtException {
+                String issuer = JwtHelper.headersAndClaims(token).getClaims().get("iss").toString();
+
+                if ("smart-recrutare-dev".equals(issuer)) {
+                    return devDecoder.decode(token);
+                }
+
+                return auth0Decoder.decode(token);
+            }
+        };
     }
 
     @Bean
@@ -121,13 +155,21 @@ public class SecurityConfig {
     }
 
     @Bean
+    @Primary
     JwtDecoder smartRecrutareJwtDecoder(
             @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri:}") String auth0Issuer,
             LocalAuthProperties localAuthProperties,
-            LocalAuthTokenService localAuthTokenService
+            @Qualifier("localAuthJwtDecoder") JwtDecoder localAuthJwtDecoder
     ) {
-        return new SmartRecrutareJwtDecoder(auth0Issuer, localAuthProperties, localAuthTokenService);
+        return new SmartRecrutareJwtDecoder(auth0Issuer, localAuthProperties, localAuthJwtDecoder);
     }
+
+    @Bean
+    @Qualifier("auth0Decoder")
+    JwtDecoder auth0Decoder(@Qualifier("smartRecrutareJwtDecoder") JwtDecoder smartRecrutareJwtDecoder) {
+        return smartRecrutareJwtDecoder;
+    }
+
     @Bean
     @Qualifier("secureRestClient")
     RestClient secureRestClient(Auth0Props props, RestClient.Builder builder) {
