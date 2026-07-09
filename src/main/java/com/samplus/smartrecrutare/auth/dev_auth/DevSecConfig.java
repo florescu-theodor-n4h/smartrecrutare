@@ -1,31 +1,38 @@
 package com.samplus.smartrecrutare.auth.dev_auth;
 
-import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.NoOpPasswordEncoder;
-import org.springframework.security.oauth2.jwt.JwtEncoder;
-import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+import org.springframework.security.oauth2.jwt.*;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 
-import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
-import java.nio.charset.StandardCharsets;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
+
+import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.RSAKey;
+import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
+import com.nimbusds.jose.jwk.source.JWKSource;
+import com.nimbusds.jose.proc.SecurityContext;
+
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 
 /**
  * Configuratie de securitate pentru endpoint-urile locale de dezvoltare.
@@ -51,7 +58,7 @@ public class DevSecConfig {
     ) throws Exception {
         return http
                 .securityMatcher("/dev-auth/**")
-                .csrf(csrf -> csrf.disable())
+                .csrf(AbstractHttpConfigurer::disable)
                 .authenticationManager(devAuthAuthenticationManager)
                 .authorizeHttpRequests(auth -> auth
                         .anyRequest().authenticated()
@@ -94,6 +101,7 @@ public class DevSecConfig {
      * Izoleaza autentificarea Basic pentru lantul {@code /dev-auth/**}, fara sa afecteze JWT-ul aplicatiei.
      */
     @Bean
+    @SuppressWarnings("deprecation")
     public AuthenticationManager devAuthAuthenticationManager(UserDetailsService devAuthUsers) {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider(devAuthUsers);
         provider.setPasswordEncoder(NoOpPasswordEncoder.getInstance());
@@ -103,8 +111,28 @@ public class DevSecConfig {
 
     @Bean
     @Qualifier("devEncoder")
-    JwtEncoder devEncoder(@Value("${jwt.secret}") String secret) {
-        SecretKey key = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
-        return new NimbusJwtEncoder(new ImmutableSecret<>(key));
+    JwtEncoder devEncoder(
+            @Qualifier("jarPrivateKey") RSAPrivateKey jarPrivateKey,
+            @Qualifier("jarPublicKey") RSAPublicKey jarPublicKey
+    ) {
+        RSAKey rsaKey = new RSAKey.Builder(jarPublicKey)
+                .privateKey(jarPrivateKey)
+                .keyID("dev-key")
+                .build();
+
+        JWKSource<SecurityContext> jwkSource =
+                new ImmutableJWKSet<>(new JWKSet(rsaKey));
+
+        return new NimbusJwtEncoder(jwkSource);
+    }
+
+    @Bean
+    @Qualifier("devDecoder")
+    JwtDecoder devDecoder(
+            @Qualifier("jarPublicKey") RSAPublicKey jarPublicKey
+    ) {
+        return NimbusJwtDecoder
+                .withPublicKey(jarPublicKey)
+                .build();
     }
 }
