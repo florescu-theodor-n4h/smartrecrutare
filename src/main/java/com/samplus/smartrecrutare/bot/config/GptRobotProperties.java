@@ -4,6 +4,8 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
@@ -30,10 +32,11 @@ import java.time.Duration;
  * {@code /bot/gpt-robot/user-chat} fail with HTTP 503. This lets CRUD/history
  * remain usable in environments that intentionally do not enable the robot.</p>
  */
+@Setter
+@Getter
 @Validated
 @ConfigurationProperties(prefix = "bot.gpt-robot.api")
 public class GptRobotProperties {
-
     private URI baseUrl;
 
     @NotBlank
@@ -52,51 +55,4 @@ public class GptRobotProperties {
     @NotBlank
     private String defaultPrompt = "You are a concise recruitment assistant.";
 
-    public URI getBaseUrl() {
-        return baseUrl;
-    }
-
-    public void setBaseUrl(URI baseUrl) {
-        this.baseUrl = baseUrl;
-    }
-
-    public String getChatPath() {
-        return chatPath;
-    }
-
-    public void setChatPath(String chatPath) {
-        this.chatPath = chatPath;
-    }
-
-    public Duration getConnectTimeout() {
-        return connectTimeout;
-    }
-
-    public void setConnectTimeout(Duration connectTimeout) {
-        this.connectTimeout = connectTimeout;
-    }
-
-    public Duration getReadTimeout() {
-        return readTimeout;
-    }
-
-    public void setReadTimeout(Duration readTimeout) {
-        this.readTimeout = readTimeout;
-    }
-
-    public int getHistoryLimit() {
-        return historyLimit;
-    }
-
-    public void setHistoryLimit(int historyLimit) {
-        this.historyLimit = historyLimit;
-    }
-
-    public String getDefaultPrompt() {
-        return defaultPrompt;
-    }
-
-    public void setDefaultPrompt(String defaultPrompt) {
-        this.defaultPrompt = defaultPrompt;
-    }
 }

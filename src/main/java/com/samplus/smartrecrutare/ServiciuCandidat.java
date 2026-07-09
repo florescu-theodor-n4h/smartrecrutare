@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.Collection;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Serviciu atomic enterprise pentru gestionarea candidaților.
@@ -83,15 +84,16 @@ public class ServiciuCandidat {
             throw new IllegalArgumentException("numePrenume nu poate fi null/gol");
         }
 
-        final Optional<Candidat> candidatOpt = depozitCandidati.findByNumePrenume(numePrenume);
+        final var candidatOpt = depozitCandidati.findByNumePrenume(numePrenume);
 
         if (candidatOpt.isEmpty()) {
             log.warn("Stergere ignorata — candidat inexistent: numePrenume={}", numePrenume);
             return false;
         }
 
-        depozitCandidati.delete(candidatOpt.get());
-        log.info("Candidat sters: numePrenume={}", numePrenume);
+        depozitCandidati.deleteAll(candidatOpt);
+        //depozitCandidati.delete(candidatOpt.get());
+        log.info("Candidat(i) sters: numePrenume={}", numePrenume);
         return true;
     }
 
@@ -220,12 +222,14 @@ public class ServiciuCandidat {
      * @throws IllegalArgumentException dacă {@code numePrenume} este null sau gol
      */
     @Transactional(value = Transactional.TxType.SUPPORTS)
-    public Optional<Candidat> gasireByNumePrenume(String numePrenume) {
+    public Set<Candidat> gasireByNumePrenume(String numePrenume) {
         if (numePrenume == null || numePrenume.isBlank()) {
             throw new IllegalArgumentException("numePrenume nu poate fi null/gol");
         }
 
         log.debug("Cautare candidat: numePrenume={}", numePrenume);
-        return depozitCandidati.findByNumePrenume(numePrenume);
+        return depozitCandidati.findByNumePrenume(numePrenume)
+              //  .stream();
+        ;
     }
 }

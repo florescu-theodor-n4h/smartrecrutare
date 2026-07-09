@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -43,7 +44,7 @@ class ServiciuCandidatTest {
     @Test
     void stergereByNameDeletesExistingCandidate() {
         Candidat candidat = candidat(1L, "Ion Popescu", "ion@example.com", "0712345678");
-        when(depozitCandidati.findByNumePrenume("Ion Popescu")).thenReturn(Optional.of(candidat));
+        when(depozitCandidati.findByNumePrenume("Ion Popescu")).thenReturn(Set.of(candidat));
 
         assertThat(serviciu.stergere("Ion Popescu")).isTrue();
 
@@ -52,7 +53,7 @@ class ServiciuCandidatTest {
 
     @Test
     void stergereByNameIsIdempotentAndRejectsBlankNames() {
-        when(depozitCandidati.findByNumePrenume("Necunoscut")).thenReturn(Optional.empty());
+        when(depozitCandidati.findByNumePrenume("Necunoscut")).thenReturn(Set.of());
 
         assertThat(serviciu.stergere("Necunoscut")).isFalse();
         assertThatThrownBy(() -> serviciu.stergere(" "))
@@ -110,7 +111,7 @@ class ServiciuCandidatTest {
         Candidat candidat = candidat(1L, "Ion Popescu", "ion@example.com", "0712345678");
         when(depozitCandidati.findAll()).thenReturn(List.of(candidat));
         when(depozitCandidati.findById(1L)).thenReturn(Optional.of(candidat));
-        when(depozitCandidati.findByNumePrenume("Ion Popescu")).thenReturn(Optional.of(candidat));
+        when(depozitCandidati.findByNumePrenume("Ion Popescu")).thenReturn(Set.of(candidat));
 
         assertThat(serviciu.getTotiCandidatii()).containsExactly(candidat);
         assertThat(serviciu.gasireById(1L)).contains(candidat);

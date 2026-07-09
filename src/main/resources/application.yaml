@@ -19,8 +19,8 @@ spring:
         default_schema: recrutare
     show-sql: true
 
-  mvc:
-    throw-exception-if-no-handler-found: true
+  #<!--mvc:
+  #  throw-exception-if-no-handler-found: true-->
   web:
     resources:
       add-mappings: false
@@ -65,3 +65,8 @@ local-auth:
   secret-location: ${LOCAL_AUTH_JWT_SECRET_LOCATION:classpath:local-secrets/auth-local-symmetric.key}
   secret: ${LOCAL_AUTH_JWT_SECRET:}
   access-token-minutes: ${LOCAL_AUTH_ACCESS_TOKEN_MINUTES:60}
+
+bot:
+  gpt-robot:
+    api:
+      base-url: https://ec2-16-170-209-233.eu-north-1.compute.amazonaws.com/
