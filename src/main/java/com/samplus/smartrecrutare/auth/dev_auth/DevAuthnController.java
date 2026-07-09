@@ -98,7 +98,9 @@ public class DevAuthnController {
                 .claim("roles", List.of("admin", "recruiter"))
                 .build();
 
-        JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
+        JwsHeader header = JwsHeader.with(SignatureAlgorithm.RS256)
+                .keyId("dev-key")
+                .build();
 
         return devEncoder
                 .encode(JwtEncoderParameters.from(header, claims))

@@ -37,9 +37,9 @@ import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 /**
  * Configuratie de securitate pentru endpoint-urile locale de dezvoltare.
  *
- * <p>Clasa este activa doar pe profilul {@code dev}; in celelalte profiluri, lantul principal din
- * {@code SecurityConfig} blocheaza explicit ruta {@code /dev-auth/**}. Credentialele sunt citite
- * din {@link DevAuthProperties}, ca sa ramana configurabile fara valori ascunse in cod.</p>
+ * <p>Lantul are prioritate peste resource server pentru {@code /dev-auth/**}, ca endpoint-ul de token
+ * local sa raspunda cu provocare HTTP Basic, nu cu Bearer. Credentialele sunt citite din
+ * {@link DevAuthProperties}, ca sa ramana configurabile fara valori ascunse in cod.</p>
  */
 @Configuration
 // @Profile("dev")
