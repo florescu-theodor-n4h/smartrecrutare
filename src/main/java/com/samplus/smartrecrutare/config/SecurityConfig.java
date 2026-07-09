@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
@@ -37,8 +38,14 @@ import java.util.Arrays;
 
 import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
 
+/**
+ * Configuratia principala de securitate pentru API, SPA si resursele OAuth2/JWT.
+ *
+ * <p>Endpoint-urile speciale {@code /dev-auth/**} sunt tratate de un lant separat in profilul
+ * {@code dev}; aici sunt refuzate explicit ca sa nu ramana expuse in profilurile normale.</p>
+ */
 @Configuration
-@EnableConfigurationProperties({Auth0Props.class, LocalAuthProperties.class})
+@EnableConfigurationProperties({Auth0Props.class, LocalAuthProperties.class, HTTPAccessPathsProperties.class})
 @EnableWebSecurity
 @EnableMethodSecurity
         (
@@ -67,7 +74,13 @@ public class SecurityConfig {
     }
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    @Order(2)
+    SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            HTTPAccessPathsProperties accessPathsProperties
+    ) throws Exception {
+        String[] publicPaths = accessPathsProperties.getPublicPaths().toArray(String[]::new);
+
         return http
                 .csrf(this::disableCsrf)
                 .cors(Customizer.withDefaults())
@@ -78,13 +91,9 @@ public class SecurityConfig {
                     }
                 })
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/swagger-ui/**",
-                                "/swagger-ui.html",
-                                "/v3/api-docs/**",
-                                "/dev-auth/token"
-                        ).permitAll()
+                        .requestMatchers(publicPaths).permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/dev-auth/**").denyAll()
                         .requestMatchers(HttpMethod.GET, "/api/jobs/active").permitAll()
                         .requestMatchers("/auth/login", "/auth/callback", "/auth/me").permitAll()
                         .requestMatchers("/auth/local/login").permitAll()
