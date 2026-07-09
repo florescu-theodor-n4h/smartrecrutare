@@ -79,7 +79,7 @@ public class SecurityConfig {
             HttpSecurity http,
             HTTPAccessPathsProperties accessPathsProperties
     ) throws Exception {
-        String[] publicPaths = accessPathsProperties.getPublicPaths().toArray(String[]::new);
+        final String[] publicPaths = accessPathsProperties.getPublicPaths();
 
         return http
                 .csrf(this::disableCsrf)
