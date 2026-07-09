@@ -172,11 +172,13 @@
 		</profile>
 		<profile>
 			<id>RELEASE</id>
+			<properties> <profile.RELEASE.active>true</profile.RELEASE.active> </properties>
 		</profile>
 		<!-- Se ruleaza pe LAN 192.... -->
 		<!-- se ruleaza pe serverul Cloud -->
 		<profile>
 			<id>deployment-server-remote-provided</id>
+			<properties> <profile.deployment-server-remote-provided.active>true</profile.deployment-server-remote-provided.active> </properties>
 			<dependencies>
 				<dependency>
 					<groupId>org.springframework.boot</groupId>
@@ -242,9 +244,52 @@
 						<ebEnvironmentName>${aws.env}</ebEnvironmentName>
 					</configuration>
 				</plugin>
+			</plugins>
+			</build>
+		</profile>
 
+		<profile>
+			<id>remote-deploy-vue</id>
+			<build>
+			<plugins>
+				<!-- plugin pentru a ne asigura ca RELEASE si deployment-server-remote-provided sunt -->
+				<!--activate. Deoarece doar cand acestea sunt active este rcomandat acest tip de deployment.-->
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-enforcer-plugin</artifactId>
+					<version>3.6.3</version>
+					<executions>
+						<execution>
+							<id>require-release-and-remote-server-profiles</id>
+							<phase>validate</phase>
+							<goals>
+								<goal>enforce</goal>
+							</goals>
+							<configuration>
+								<rules>
+									<requireProperty>
+										<property>profile.RELEASE.active</property>
+										<message>
+											Profile 'remote-deploy-vue' requires profile 'RELEASE'.
+											Run with: -PRELEASE,deployment-server-remote-provided,remote-deploy-vue
+										</message>
+										<regex>true</regex>
+									</requireProperty>
 
-				<!-- PLUGIN compilare -->
+									<requireProperty>
+										<property>profile.deployment-server-remote-provided.active</property>
+										<message>
+											Profile 'remote-deploy-vue' requires profile 'deployment-server-remote-provided'.
+											Run with: -PRELEASE,deployment-server-remote-provided,remote-deploy-vue
+										</message>
+										<regex>true</regex>
+									</requireProperty>
+								</rules>
+							</configuration>
+						</execution>
+					</executions>
+				</plugin>
+				<!-- PLUGIN compilare frontend -->
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-resources-plugin</artifactId>

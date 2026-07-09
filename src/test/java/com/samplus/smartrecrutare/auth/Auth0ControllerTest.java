@@ -14,6 +14,7 @@ import static org.hamcrest.Matchers.hasKey;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -98,6 +99,67 @@ class Auth0ControllerTest {
                         .session(session))
                 .andExpect(status().isFound())
                 .andExpect(header().string("Location", "https://app.example.test/auth/callback?login=error&error=auth0_authorize_failed"));
+
+        verify(dynamicAuth0Service).clearTransientOauthSessionState(session);
+    }
+
+    @Test
+    void loginFallsBackToRequestOriginWhenVueRedirectConfigIsInvalid() throws Exception {
+        Auth0Props invalidVueProperties = new Auth0Props();
+        invalidVueProperties.setRedirectUri("http://localhost:8080/auth/callback");
+        invalidVueProperties.setVueRedirectUri("ftp://bad.example.test/auth/callback");
+        Auth0Service invalidVueAuth0Service = mock(Auth0Service.class);
+        MockMvc invalidVueMockMvc = MockMvcBuilders
+                .standaloneSetup(new Auth0Controller(invalidVueProperties, invalidVueAuth0Service))
+                .build();
+        MockHttpSession session = new MockHttpSession();
+        when(invalidVueAuth0Service.createAuthorizeUrl(session, "http://localhost:8080/auth/callback"))
+                .thenReturn("https://example.auth0.com/authorize?client_id=test&request_uri=urn:test");
+
+        invalidVueMockMvc.perform(get("/auth/login")
+                        .with(request -> {
+                            request.setScheme("http");
+                            request.setServerName("localhost");
+                            request.setServerPort(8080);
+                            return request;
+                        })
+                        .session(session))
+                .andExpect(status().isFound())
+                .andExpect(header().string("Location", "https://example.auth0.com/authorize?client_id=test&request_uri=urn:test"));
+
+        assertThat(session.getAttribute("oauth_vue_redirect_uri")).isEqualTo("http://localhost:8080/auth/callback");
+    }
+
+    @Test
+    void loginRedirectsToVueErrorWhenBackendRedirectConfigIsInvalid() throws Exception {
+        Auth0Props invalidBackendProperties = new Auth0Props();
+        invalidBackendProperties.setRedirectUri("ftp://bad.example.test/auth/callback");
+        invalidBackendProperties.setVueRedirectUri("http://localhost:5173/auth/callback");
+        Auth0Service invalidBackendAuth0Service = mock(Auth0Service.class);
+        MockMvc invalidBackendMockMvc = MockMvcBuilders
+                .standaloneSetup(new Auth0Controller(invalidBackendProperties, invalidBackendAuth0Service))
+                .build();
+        MockHttpSession session = new MockHttpSession();
+
+        invalidBackendMockMvc.perform(get("/auth/login").session(session))
+                .andExpect(status().isFound())
+                .andExpect(header().string("Location", "http://localhost:5173/auth/callback?login=error&error=auth0_authorize_failed"));
+
+        verify(invalidBackendAuth0Service).clearTransientOauthSessionState(session);
+        verify(invalidBackendAuth0Service, never()).createAuthorizeUrl(same(session), eq("ftp://bad.example.test/auth/callback"));
+    }
+
+    @Test
+    void loginRedirectsToVueErrorWhenServiceThrowsUnexpectedFailure() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        when(auth0Service.createAuthorizeUrl(session, "http://localhost:8080/auth/callback"))
+                .thenThrow(new RuntimeException("boom"));
+
+        mockMvc.perform(get("/auth/login").session(session))
+                .andExpect(status().isFound())
+                .andExpect(header().string("Location", "http://localhost:5173/auth/callback?login=error&error=auth0_authorize_failed"));
+
+        verify(auth0Service).clearTransientOauthSessionState(session);
     }
 
     @Test
@@ -134,6 +196,33 @@ class Auth0ControllerTest {
                         .session(session))
                 .andExpect(status().isFound())
                 .andExpect(header().string("Location", "http://localhost:5173/auth/callback?login=error&error=access_denied"));
+
+        verify(auth0Service).clearTransientOauthSessionState(session);
+    }
+
+    @Test
+    void callbackErrorUsesConfiguredVueRedirectWhenSessionRedirectIsMissing() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+
+        mockMvc.perform(get("/auth/callback")
+                        .param("error", "access_denied")
+                        .session(session))
+                .andExpect(status().isFound())
+                .andExpect(header().string("Location", "http://localhost:5173/auth/callback?login=error&error=access_denied"));
+    }
+
+    @Test
+    void callbackRedirectsToVueErrorUrlWhenCodeOrStateIsMissing() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("oauth_vue_redirect_uri", "http://localhost:5173/auth/callback");
+
+        mockMvc.perform(get("/auth/callback")
+                        .param("code", "code-123")
+                        .session(session))
+                .andExpect(status().isFound())
+                .andExpect(header().string("Location", "http://localhost:5173/auth/callback?login=error&error=missing_oauth_callback_parameters"));
+
+        verify(auth0Service).clearTransientOauthSessionState(session);
     }
 
     @Test
@@ -149,6 +238,25 @@ class Auth0ControllerTest {
                         .session(session))
                 .andExpect(status().isFound())
                 .andExpect(header().string("Location", "http://localhost:5173/auth/callback?login=error&error=auth0_token_failed"));
+
+        verify(auth0Service).clearTransientOauthSessionState(session);
+    }
+
+    @Test
+    void callbackRedirectsToVueErrorUrlWhenTokenExchangeThrowsUnexpectedFailure() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("oauth_vue_redirect_uri", "http://localhost:5173/auth/callback");
+        when(auth0Service.exchangeCodeForTokens(eq("code-123"), eq("state-123"), same(session)))
+                .thenThrow(new RuntimeException("boom"));
+
+        mockMvc.perform(get("/auth/callback")
+                        .param("code", "code-123")
+                        .param("state", "state-123")
+                        .session(session))
+                .andExpect(status().isFound())
+                .andExpect(header().string("Location", "http://localhost:5173/auth/callback?login=error&error=auth0_token_failed"));
+
+        verify(auth0Service).clearTransientOauthSessionState(session);
     }
 
     @Test

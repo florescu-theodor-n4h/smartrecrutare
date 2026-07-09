@@ -18,6 +18,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -129,6 +130,81 @@ class Auth0ServiceTest {
     }
 
     @Test
+    void createAuthorizeUrlFallsBackToPlainPkceAuthorizeUrlWhenAuth0RejectsParForPublicClient() {
+        MockHttpSession session = new MockHttpSession();
+        server.expect(requestTo("https://unit-test.auth0.com/oauth/par"))
+                .andExpect(method(POST))
+                .andRespond(withStatus(HttpStatus.BAD_REQUEST)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("""
+                                {
+                                  "error": "invalid_request",
+                                  "error_description": "Public clients are not presently supported on the pushed_authorization_endpoint"
+                                }
+                                """));
+
+        String authorizeUrl = service.createAuthorizeUrl(session, "https://app.example.test/auth/callback");
+
+        assertThat(authorizeUrl)
+                .startsWith("https://unit-test.auth0.com/authorize")
+                .contains("client_id=client-test")
+                .contains("response_type=code")
+                .contains("redirect_uri=https://app.example.test/auth/callback")
+                .contains("scope=openid%20profile%20email")
+                .contains("state=")
+                .contains("nonce=")
+                .contains("code_challenge=")
+                .contains("code_challenge_method=S256")
+                .contains("audience=https://api.example.test")
+                .doesNotContain("request_uri=")
+                .doesNotContain("client-secret-test")
+                .doesNotContain("pkce_code_verifier");
+        assertThat(session.getAttribute("oauth_public_client")).isEqualTo(true);
+        server.verify();
+    }
+
+    @Test
+    void createAuthorizeUrlUsesPlainPkcePublicClientFlowWhenClientSecretIsBlank() {
+        properties.setClientSecret("");
+        properties.getJar().setKeyId("");
+        MockHttpSession session = new MockHttpSession();
+
+        String authorizeUrl = service.createAuthorizeUrl(session, "https://app.example.test/auth/callback");
+
+        assertThat(authorizeUrl)
+                .startsWith("https://unit-test.auth0.com/authorize")
+                .contains("client_id=client-test")
+                .contains("response_type=code")
+                .contains("redirect_uri=https://app.example.test/auth/callback")
+                .contains("code_challenge_method=S256")
+                .doesNotContain("request_uri=")
+                .doesNotContain("client_secret");
+        assertThat(session.getAttribute("oauth_public_client")).isEqualTo(true);
+        server.verify();
+    }
+
+    @Test
+    void createAuthorizeUrlRetriesTransientParFailureBeforeFallingBackToSuccess() {
+        MockHttpSession session = new MockHttpSession();
+        server.expect(requestTo("https://unit-test.auth0.com/oauth/par"))
+                .andExpect(method(POST))
+                .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"error\":\"server_error\"}"));
+        server.expect(requestTo("https://unit-test.auth0.com/oauth/par"))
+                .andExpect(method(POST))
+                .andRespond(withSuccess("{\"request_uri\":\"urn:auth0:par:retry-success\"}", MediaType.APPLICATION_JSON));
+
+        String authorizeUrl = service.createAuthorizeUrl(session, "https://app.example.test/auth/callback");
+
+        assertThat(authorizeUrl)
+                .startsWith("https://unit-test.auth0.com/authorize")
+                .contains("request_uri=urn:auth0:par:retry-success");
+        assertThat(session.getAttribute("oauth_public_client")).isEqualTo(false);
+        server.verify();
+    }
+
+    @Test
     void exchangeCodeForTokensPostsAuthorizationCodeAndClearsOauthSessionState() {
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("oauth_state", "expected-state");
@@ -162,6 +238,61 @@ class Auth0ServiceTest {
         assertThat(session.getAttribute("oauth_nonce")).isNull();
         assertThat(session.getAttribute("pkce_code_verifier")).isNull();
         assertThat(session.getAttribute("oauth_redirect_uri")).isNull();
+        server.verify();
+    }
+
+    @Test
+    void exchangeCodeForTokensOmitsClientSecretForPublicClientFallbackSession() {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("oauth_state", "expected-state");
+        session.setAttribute("oauth_nonce", "nonce");
+        session.setAttribute("pkce_code_verifier", "verifier-123");
+        session.setAttribute("oauth_redirect_uri", "https://app.example.test/auth/callback");
+        session.setAttribute("oauth_public_client", true);
+        server.expect(requestTo("https://unit-test.auth0.com/oauth/token"))
+                .andExpect(method(POST))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_FORM_URLENCODED))
+                .andExpect(content().string(containsString("grant_type=authorization_code")))
+                .andExpect(content().string(containsString("client_id=client-test")))
+                .andExpect(content().string(not(containsString("client_secret="))))
+                .andExpect(content().string(containsString("code=code-123")))
+                .andExpect(content().string(containsString("redirect_uri=https%3A%2F%2Fapp.example.test%2Fauth%2Fcallback")))
+                .andExpect(content().string(containsString("code_verifier=verifier-123")))
+                .andRespond(withSuccess("""
+                        {
+                          "access_token": "access-token",
+                          "id_token": "id-token",
+                          "token_type": "Bearer",
+                          "expires_in": 3600
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        service.exchangeCodeForTokens("code-123", "expected-state", session);
+
+        assertThat(session.getAttribute("oauth_public_client")).isNull();
+        server.verify();
+    }
+
+    @Test
+    void exchangeCodeForTokensRejectsMalformedTokenResponseWithoutAcceptingSession() {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("oauth_state", "expected-state");
+        session.setAttribute("oauth_nonce", "nonce");
+        session.setAttribute("pkce_code_verifier", "verifier-123");
+        session.setAttribute("oauth_redirect_uri", "https://app.example.test/auth/callback");
+        server.expect(requestTo("https://unit-test.auth0.com/oauth/token"))
+                .andExpect(method(POST))
+                .andRespond(withSuccess("""
+                        {
+                          "token_type": "Bearer",
+                          "expires_in": 3600
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        assertThatThrownBy(() -> service.exchangeCodeForTokens("code-123", "expected-state", session))
+                .isInstanceOf(Auth0OAuthException.class)
+                .hasMessageContaining("missing access_token");
+
         server.verify();
     }
 
