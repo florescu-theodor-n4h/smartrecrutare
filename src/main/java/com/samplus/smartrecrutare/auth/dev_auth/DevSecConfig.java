@@ -1,6 +1,9 @@
 package com.samplus.smartrecrutare.auth.dev_auth;
 
+import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,9 +17,15 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.NoOpPasswordEncoder;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Configuratie de securitate pentru endpoint-urile locale de dezvoltare.
@@ -26,7 +35,7 @@ import org.springframework.security.web.SecurityFilterChain;
  * din {@link DevAuthProperties}, ca sa ramana configurabile fara valori ascunse in cod.</p>
  */
 @Configuration
-@Profile("dev")
+// @Profile("dev")
 @EnableConfigurationProperties(DevAuthProperties.class)
 public class DevSecConfig {
 
@@ -90,5 +99,12 @@ public class DevSecConfig {
         provider.setPasswordEncoder(NoOpPasswordEncoder.getInstance());
 
         return new ProviderManager(provider);
+    }
+
+    @Bean
+    @Qualifier("devEncoder")
+    JwtEncoder devEncoder(@Value("${jwt.secret}") String secret) {
+        SecretKey key = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+        return new NimbusJwtEncoder(new ImmutableSecret<>(key));
     }
 }

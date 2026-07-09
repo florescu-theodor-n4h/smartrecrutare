@@ -1,5 +1,6 @@
 package com.samplus.smartrecrutare.auth.dev_auth;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
@@ -17,11 +18,10 @@ import java.util.List;
 @RestController
 // @Profile("dev")
 public class DevAuthnController {
+    private final JwtEncoder devEncoder;
 
-    private final JwtEncoder jwtEncoder;
-
-    public DevAuthnController(JwtEncoder jwtEncoder) {
-        this.jwtEncoder = jwtEncoder;
+    public DevAuthnController( @Qualifier("devEncoder")JwtEncoder devEncoder) {
+        this.devEncoder = devEncoder;
     }
 
     @GetMapping(value = "/dev-auth/token", produces = MediaType.TEXT_HTML_VALUE)
@@ -100,7 +100,7 @@ public class DevAuthnController {
 
         JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
 
-        return jwtEncoder
+        return devEncoder
                 .encode(JwtEncoderParameters.from(header, claims))
                 .getTokenValue();
     }
