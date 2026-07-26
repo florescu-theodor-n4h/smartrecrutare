@@ -6,6 +6,7 @@ import com.samplus.smartrecrutare.employer.exception.EmployerNotFoundException;
 import com.samplus.smartrecrutare.employer.mapper.EmployerMapper;
 import com.samplus.smartrecrutare.employer.repository.EmployerRepository;
 import com.samplus.smartrecrutare.job.dto.JobCreateRequest;
+import com.samplus.smartrecrutare.job.dto.JobPublishRequest;
 import com.samplus.smartrecrutare.job.dto.JobResponse;
 import com.samplus.smartrecrutare.job.mapper.JobMapper;
 import jakarta.persistence.EntityNotFoundException;
@@ -128,6 +129,29 @@ class ServiciuJoburiTest {
         assertThatThrownBy(() -> serviciu.creareDinRequest(request))
                 .isInstanceOf(EmployerNotFoundException.class)
                 .hasMessageContaining("404");
+    }
+
+    @Test
+    void crearePentruAngajatorFolosesteIdUlDinRutaSiNumeleAngajatorului() {
+        Employer employer = employer();
+        JobPublishRequest request = new JobPublishRequest(
+                "Java Developer",
+                "Backend",
+                null,
+                "Bucuresti",
+                "5000 EUR",
+                "Full-time",
+                true
+        );
+        when(employerRepository.findById(10L)).thenReturn(Optional.of(employer));
+        when(depozitJoburi.saveAndFlush(org.mockito.ArgumentMatchers.any(Job.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        JobResponse response = serviciu.crearePentruAngajator(10L, request);
+
+        assertThat(response.getTitlu()).isEqualTo("Java Developer");
+        assertThat(response.getCompanie()).isEqualTo("Samplus");
+        assertThat(response.getEmployer().getNume()).isEqualTo("Samplus");
     }
 
     @Test

@@ -4,6 +4,7 @@ import com.samplus.smartrecrutare.employer.domain.Employer;
 import com.samplus.smartrecrutare.employer.exception.EmployerNotFoundException;
 import com.samplus.smartrecrutare.employer.repository.EmployerRepository;
 import com.samplus.smartrecrutare.job.dto.JobCreateRequest;
+import com.samplus.smartrecrutare.job.dto.JobPublishRequest;
 import com.samplus.smartrecrutare.job.dto.JobResponse;
 import com.samplus.smartrecrutare.job.dto.JobUpdateRequest;
 import com.samplus.smartrecrutare.job.mapper.JobMapper;
@@ -55,6 +56,23 @@ public class ServiciuJoburi {
     public JobResponse creareDinRequest(JobCreateRequest request) {
         Employer employer = findEmployer(request.getEmployerId());
         Job job = jobMapper.toEntity(request, employer);
+        return salveazaJobPublicat(job, employer);
+    }
+
+    /**
+     * Publica un job pentru angajatorul selectat din ruta API.
+     *
+     * <p>Serviciul nu accepta ID-ul angajatorului in corpul cererii; aceasta
+     * regula este verificata de autorizarea controllerului inainte de salvare.</p>
+     */
+    @Transactional
+    public JobResponse crearePentruAngajator(Long employerId, JobPublishRequest request) {
+        Employer employer = findEmployer(employerId);
+        Job job = jobMapper.toEntity(request, employer);
+        return salveazaJobPublicat(job, employer);
+    }
+
+    private JobResponse salveazaJobPublicat(Job job, Employer employer) {
         Job salvat = depozitJoburi.saveAndFlush(job);
         log.info("Job creat cu angajator: id={} employerId={}", salvat.getId(), employer.getId());
         return jobMapper.toResponse(salvat);

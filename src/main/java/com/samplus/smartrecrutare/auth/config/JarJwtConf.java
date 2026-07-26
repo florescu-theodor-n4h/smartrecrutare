@@ -4,9 +4,11 @@ import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.samplus.smartrecrutare.auth.PemLoader;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
@@ -16,19 +18,39 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 
 @Configuration
 public class JarJwtConf {
+    /**
+     * Genereaza o cheie tranzitorie doar pentru testele automate.
+     *
+     * <p>Profilul de productie continua sa solicite explicit cheile PEM
+     * configurate, astfel incat testele nu introduc secrete in repository.</p>
+     */
+    @Bean("testJarKeyPair")
+    @Profile("test")
+    public KeyPair testJarKeyPair() throws Exception {
+        KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+        generator.initialize(2048);
+        return generator.generateKeyPair();
+    }
+
     @Bean
     @Qualifier("jarPrivateKey")
     public RSAPrivateKey jarPrivateKey(
             Auth0Props properties,
             ResourceLoader resourceLoader,
-            PemLoader pemLoader
+            PemLoader pemLoader,
+            @Qualifier("testJarKeyPair") ObjectProvider<KeyPair> testJarKeyPair
     ) throws Exception {
         Resource resource = resourceLoader.getResource(
                 properties.getJar().getPrivateKeyLocation()
         );
+        if (!resource.exists() && testJarKeyPair.getIfAvailable() != null) {
+            return (RSAPrivateKey) testJarKeyPair.getObject().getPrivate();
+        }
 
         String pem;
         try (InputStream inputStream = resource.getInputStream()) {
@@ -43,11 +65,15 @@ public class JarJwtConf {
     public RSAPublicKey jarPublicKey(
             Auth0Props properties,
             ResourceLoader resourceLoader,
-            PemLoader pemLoader
+            PemLoader pemLoader,
+            @Qualifier("testJarKeyPair") ObjectProvider<KeyPair> testJarKeyPair
     ) throws Exception {
         Resource resource = resourceLoader.getResource(
                 properties.getJar().getPublicKeyLocation()
         );
+        if (!resource.exists() && testJarKeyPair.getIfAvailable() != null) {
+            return (RSAPublicKey) testJarKeyPair.getObject().getPublic();
+        }
 
         String pem;
         try (InputStream inputStream = resource.getInputStream()) {

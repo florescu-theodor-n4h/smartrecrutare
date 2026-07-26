@@ -66,7 +66,10 @@ erDiagram
 
 1. Admin or manager authenticates through the configured Spring Security/OAuth2 resource server.
 2. Admin or manager creates an employer with `POST /api/employers`.
-3. Admin or manager creates a job linked to that employer with `POST /api/jobs` and `employerId`.
+3. Admin or manager publishes a job with `POST /api/employers/{employerId}/jobs`.
+   The employer ID comes from the URL, not from the request body, and a manager
+   must be assigned to that employer. `POST /api/jobs` with `employerId` remains
+   available for backwards compatibility.
 4. Users or guests can read public/active jobs according to the security rules configured in the security layer.
 5. Auditor or governmental users can inspect records according to the role rules configured in a later security pass.
 
@@ -79,6 +82,7 @@ Employer API:
 - `POST /api/employers`
 - `PUT /api/employers/{id}`
 - `DELETE /api/employers/{id}`
+- `POST /api/employers/{employerId}/jobs`
 
 Job API:
 
@@ -89,6 +93,26 @@ Job API:
 - `DELETE /api/jobs/{id}`
 - `GET /api/jobs/active`
 - `GET /api/jobs/cauta?titlu=java`
+
+### Publicarea unui job de catre angajator
+
+`POST /api/employers/{employerId}/jobs` necesita autentificare. Administratorii
+pot publica pentru orice angajator, iar managerii locali doar pentru
+angajatorii atribuiti contului lor. Corpul cererii nu contine `employerId`:
+
+```json
+{
+  "titlu": "Java Developer",
+  "descriere": "Dezvoltare API-uri Spring Boot",
+  "locatie": "Remote",
+  "salariu": "5000-7000 EUR",
+  "tipContract": "Full-time",
+  "activ": true
+}
+```
+
+Raspunsul este `201 Created` si include jobul publicat. Campul `companie` este
+optional; daca lipseste, API-ul foloseste numele angajatorului.
 
 ## Audit
 

@@ -1,23 +1,65 @@
-Proiect praaa,ctica anul II (23 iulnie 2026=).    ll  i
+# SmartRecrutare
 
+Backend Spring Boot pentru managementul angajatorilor, joburilor, candidatilor,
+autentificarii locale/OAuth2 si analizelor de potrivire.
 
+## Cerinte
 
-Programul Java foloseste:
-* integrarea serviciilor web RESTful cu aplicații de tip Single Page Application, 
-* *utilizând* in aplicatie tehnologiile Spring Boot și Vue.js
+- Java 17 sau mai nou
+- Maven 3.9 sau mai nou
+- O baza de date configurata pentru profilul ales
 
+Pe Termux:
 
-* Setup proiect 1 zi * integrarea Vue 3 cu Vite pinia (state managment) si Vue router - se creaza dashboard-ul
-* Integrare API
+```sh
+pkg update
+pkg install openjdk-17 maven ant
+```
 
-linkuri
-pg my admin http://ec2-13-60-76-50.eu-north-1.compute.amazonaws.com/pgadmin4/browser/
+## Rulare si verificare
 
+```sh
+mvn test
+mvn package
+mvn spring-boot:run
+```
 
-AWS
-Environment overview - events | Elastic Beanstalk | eu-north-1 https://eu-north-1.console.aws.amazon.com/elasticbeanstalk/home?region=eu-north-1#/environment/dashboard?environmentId=e-egkwqseaub
-smartrecrutare-db - Database Details | Aurora and RDS | eu-north-1 https://eu-north-1.console.aws.amazon.com/rds/home?region=eu-north-1#database:id=smartrecrutare-db;is-cluster=false
-502 Bad Gateway http://smartrecrutare.eu-north-1.elasticbeanstalk.com/web/swagger-ui/index.html
-Swagger UI dev  http://localhost:8080/swagger-ui/index.html
-Swagger UI local  http://192.168.2.1:8080/web/swagger-ui/index.html
-swagger ui cloud http://smartrecrutare2.eu-north-1.elasticbeanstalk.com//swagger-ui/index.html
+Configuratia standard este in `src/main/resources/application.yaml`, iar
+configuratia de test in `src/test/resources/application-test.yaml`. Nu adauga
+chei, parole sau configuratii locale in Git.
+
+Logurile rotative sunt scrise implicit in
+`${java.io.tmpdir}/smartrecrutare`. Pentru un director persistent, seteaza
+`logging.file.path` in configuratia locala sau ca proprietate JVM.
+
+Swagger UI este disponibil, dupa pornirea aplicatiei, la:
+
+```text
+http://localhost:8080/swagger-ui/index.html
+```
+
+## Publicarea joburilor
+
+Un administrator sau manager poate publica un job pentru un angajator:
+
+```text
+POST /api/employers/{employerId}/jobs
+```
+
+Managerul trebuie sa fie atribuit angajatorului. Cererea nu accepta
+`employerId` in corp; astfel, un manager nu poate redirectiona accidental sau
+intentionat jobul catre alta companie. Consultati
+[`docs/backend-employer-job-workflow.md`](docs/backend-employer-job-workflow.md)
+pentru endpointuri, roluri si exemple.
+
+## Documentatie
+
+- `docs/backend-architecture.md` - arhitectura backend
+- `docs/backend-employer-job-workflow.md` - flux angajatori si joburi
+- `docs/security-rbac-workflow.md` - roluri si autorizare
+- `docs/auth0-qa-practices.md` - verificari Auth0
+
+## Contributii
+
+Cititi [`AGENTS.md`](AGENTS.md) inainte de modificari. Orice schimbare de
+comportament trebuie sa aiba teste si documentatie aferente.

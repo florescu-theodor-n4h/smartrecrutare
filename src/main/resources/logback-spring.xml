@@ -2,6 +2,8 @@
 <configuration>
     <property name="LOG_PATTERN"
               value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{40} - %msg%n"/>
+    <springProperty name="LOG_DIR" source="logging.file.path"
+                    defaultValue="${java.io.tmpdir}/smartrecrutare"/>
 
 
     <logger name="com.samplus.smartrecrutare" level="DEBUG"/>
@@ -11,14 +13,14 @@
     <logger name="org.hibernate" level="DEBUG"/>
     <logger name="org.hibernate.SQL" level="DEBUG"/>
     <logger name="org.hibernate.orm.jdbc.bind" level="TRACE"/>
-    <property name="NUCLEAR_LOG" value="/tmp/spring-nuclear.log"/>
+    <property name="NUCLEAR_LOG" value="${LOG_DIR}/spring-nuclear.log"/>
 
     <!-- FILE APPENDER (PRIMARY) -->
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${NUCLEAR_LOG}</file>
 
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>/tmp/spring-nuclear.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <fileNamePattern>${LOG_DIR}/spring-nuclear.%d{yyyy-MM-dd}.log</fileNamePattern>
             <maxHistory>5</maxHistory>
         </rollingPolicy>
 
@@ -34,12 +36,12 @@
     <!-- ===================== -->
     <appender name="APP_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
 
-        <file>/tmp/0logMySpringapp.log</file>
+        <file>${LOG_DIR}/application.log</file>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
             <level>INFO</level>
         </filter>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>/tmp/1logMySpringapp.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <fileNamePattern>${LOG_DIR}/application.%d{yyyy-MM-dd}.log</fileNamePattern>
             <maxHistory>10</maxHistory>
         </rollingPolicy>
 
