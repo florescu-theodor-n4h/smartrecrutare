@@ -1,0 +1,39 @@
+name: Integrare continua
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verifica:
+    name: Testare si impachetare
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Preia sursele
+        uses: actions/checkout@v4
+
+      - name: Configureaza Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Ruleaza testele si construieste WAR-ul
+        run: mvn --batch-mode --update-snapshots verify
+
+      - name: Pastreaza artefactul WAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: smartrecrutare-war
+          path: target/*.war
+          if-no-files-found: error
+          retention-days: 14

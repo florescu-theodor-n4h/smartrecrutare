@@ -63,3 +63,11 @@ pentru endpointuri, roluri si exemple.
 
 Cititi [`AGENTS.md`](AGENTS.md) inainte de modificari. Orice schimbare de
 comportament trebuie sa aiba teste si documentatie aferente.
+
+## CI/CD GitHub
+
+- **Integrare continua**: fiecare push sau pull request spre `master` ruleaza
+  `mvn verify` cu Java 17 si pastreaza WAR-ul ca artefact GitHub Actions.
+- **Livrare continua**: un tag de forma `v*` (de exemplu `v0.1.0`) construieste
+  WAR-ul si il ataseaza automat unui GitHub Release. Nu sunt necesare secrete
+  de deployment pentru acest flux.
