@@ -1,8 +1,5 @@
 package com.samplus.smartrecrutare.config;
 
-import com.samplus.smartrecrutare.auth.Auth0OAuthException;
-import com.samplus.smartrecrutare.auth.config.Auth0Props;
-import com.samplus.smartrecrutare.auth.dev_auth.DevAuthProperties;
 import com.samplus.smartrecrutare.localauth.config.LocalAuthProperties;
 import com.samplus.smartrecrutare.localauth.security.SmartRecrutareJwtDecoder;
 import com.samplus.smartrecrutare.security.RbacJwtAuthenticationConverter;
@@ -50,7 +47,8 @@ import static org.springframework.security.config.http.SessionCreationPolicy.STA
  * {@code DevSecConfig}; aici raman refuzate daca lantul dedicat nu este disponibil.</p>
  */
 @Configuration
-@EnableConfigurationProperties({Auth0Props.class, LocalAuthProperties.class, HTTPAccessPathsProperties.class})
+/* dezactivare autentificare remote @EnableConfigurationProperties({Auth0Props.class, LocalAuthProperties.class, HTTPAccessPathsProperties.class}) */
+@EnableConfigurationProperties ({LocalAuthProperties.class, HTTPAccessPathsProperties.class})
 @EnableWebSecurity
 @EnableMethodSecurity(
         prePostEnabled = true,
@@ -127,31 +125,21 @@ public class SecurityConfig {
     //@RequiredArgsConstructor
     @NullMarked
     protected static final class MultiDecoder implements JwtDecoder {
-        /* @Qualifier("devDecoder") */           private final JwtDecoder devDecoder;
-        /*@Qualifier("localAuthJwtDecoder")*/    private final JwtDecoder localAuthJwtDecoder;
-        /*@Qualifier("auth0Decoder")*/           private final JwtDecoder auth0Decoder;
-        private final                            LocalAuthProperties localAuthProperties;
+         /*@Qualifier("localAuthJwtDecoder")*/    private final JwtDecoder localAuthJwtDecoder;
+         private final                            LocalAuthProperties localAuthProperties;
         public MultiDecoder(@Qualifier("devDecoder")            JwtDecoder devDecoder,
                             @Qualifier("localAuthJwtDecoder")   JwtDecoder localAuthJwtDecoder,
                             @Qualifier("auth0Decoder")          JwtDecoder auth0Decoder,
                             LocalAuthProperties localAuthProperties) {
-            this.devDecoder = devDecoder;
-            this.localAuthJwtDecoder = localAuthJwtDecoder;
-            this.auth0Decoder = auth0Decoder;
-            this.localAuthProperties = localAuthProperties;
+             this.localAuthJwtDecoder = localAuthJwtDecoder;
+             this.localAuthProperties = localAuthProperties;
         }
 
         @Override
         public Jwt decode(String token) throws JwtException {
-            String issuer = JwtHelper.issuer(token);
-            if (DevAuthProperties.ISSUER_DEV.equals(issuer)) {
-                return devDecoder.decode(token);
-            }
-            if (localAuthProperties.getIssuer().equals(issuer)) {
-                return localAuthJwtDecoder.decode(token);
-            }
-            return auth0Decoder.decode(token);
-        }
+            return localAuthJwtDecoder.decode(token);
+
+         }
     }
 
     @Bean
@@ -182,10 +170,7 @@ public class SecurityConfig {
 
     @Bean
     @Qualifier("secureRestClient")
-    RestClient secureRestClient(Auth0Props props, RestClient.Builder builder) {
-        if (!props.getDomain().endsWith(".auth0.com")) {
-            throw new IllegalStateException("Unexpected Auth0 domain: " + props.getDomain());
-        }
+    RestClient secureRestClient(RestClient.Builder builder) {
         HttpClient httpClient = HttpClient.newBuilder()
                 //.connectTimeout(Duration.ofSeconds(5))
                 .followRedirects(HttpClient.Redirect.NEVER)
@@ -200,15 +185,15 @@ public class SecurityConfig {
 
         return builder
                 .requestFactory(requestFactory)
-                .baseUrl("https://" + props.getDomain())
+                //.baseUrl("https://" + props.getDomain())
                 .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
                 .defaultStatusHandler(
                         status -> status.is4xxClientError() || status.is5xxServerError(),
                         (request, response) -> {
                             String responseBody = new String(response.getBody().readAllBytes(), StandardCharsets.UTF_8);
-                            throw Auth0OAuthException.upstream(
-                                    request.getURI().getPath(),
-                                    response.getStatusCode().value(),
+                            throw new RuntimeException(
+                                    request.getURI().getPath().toString() +
+                                    response.getStatusCode().value() +
                                     responseBody
                             );
                         }

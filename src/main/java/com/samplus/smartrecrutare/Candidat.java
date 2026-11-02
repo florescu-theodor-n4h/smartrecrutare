@@ -54,7 +54,6 @@ public class Candidat {
         if (this.id == null || other.id == null) {
             return false;
         }
-
         // registered entities compare by database identity
         return this.id.equals(other.id);
     }
